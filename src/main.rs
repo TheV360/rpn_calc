@@ -1,5 +1,10 @@
-mod operator;
-mod expression;
+pub mod calculator {
+	pub mod operator;
+	pub mod expression;
+}
+
+use calculator::operator;
+use calculator::expression;
 
 #[test]
 fn calculate_expression() {

@@ -1,8 +1,10 @@
+use super::operator;
+
 /// The Token enum holds either a constant (stored as a 64-bit float) or an operator.
 #[derive(Clone, Copy)]
 pub enum Token {
 	Constant(f64),
-	Operator(super::operator::Operator),
+	Operator(operator::Operator),
 }
 
 /// The Expression struct holds a collection of tokens, and provides a variety of utility functions.

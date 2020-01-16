@@ -73,6 +73,6 @@ impl Operator {
 /// 
 /// Associativity dictates how an operator behaves in the absence of parenthesis. ([More info](https://en.wikipedia.org/wiki/Operator_associativity))
 #[derive(Clone, Copy)]
-enum OperatorAssociativity {
+pub enum OperatorAssociativity {
 	Left, Right,
 }
