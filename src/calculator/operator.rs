@@ -1,5 +1,5 @@
 /// This enum contains all the operators that can be used.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum Operator {
 	Add, Sub,
 	Mul, Div,
@@ -43,28 +43,15 @@ impl Operator {
 	/// Calculates the result of using this operator on a stack.
 	/// 
 	/// There's definitely a better way of doing this. I need to look into how to pass a variable amount of parameters.
-	pub fn calculate(self, stack: &mut Vec<f64>) -> f64 {
-		// todo: see if you can do this without mutably borrowing the entire stack. Slices maybe? Tuples?
-		let arg_length = self.get_arguments();
-		
-		if stack.len() < arg_length {
-			return 0.0; // todo; replace with error?
-		}
-		
-		let mut args: Vec<f64> = vec![0.0; arg_length];
-		
-		for i in (0..arg_length).rev() {
-			args[i] = stack.pop().unwrap();
-		}
-		
+	pub fn calculate(self, args: Vec<f64>) -> Result<f64, &'static str> {
 		match self {
-			Operator::Add => args[0] + args[1],
-			Operator::Sub => args[0] - args[1],
-			Operator::Mul => args[0] * args[1],
-			Operator::Div => args[0] / args[1],
-			Operator::Mod => args[0] % args[1],
-			Operator::Pow => args[0].powf(args[1]),
-			_ => 0.0, // todo; replace with error?
+			Operator::Add => Ok(args[0] + args[1]),
+			Operator::Sub => Ok(args[0] - args[1]),
+			Operator::Mul => Ok(args[0] * args[1]),
+			Operator::Div => Ok(args[0] / args[1]),
+			Operator::Mod => Ok(args[0] % args[1]),
+			Operator::Pow => Ok(args[0].powf(args[1])),
+			// _ => Err("Unknown operator."),
 		}
 	}
 }
@@ -72,7 +59,7 @@ impl Operator {
 /// Simple Operator Associativity enum.
 /// 
 /// Associativity dictates how an operator behaves in the absence of parenthesis. ([More info](https://en.wikipedia.org/wiki/Operator_associativity))
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum OperatorAssociativity {
 	Left, Right,
 }
