@@ -1,10 +1,12 @@
 [package]
-name = "rpn_calc_test"
+name = "rpn_calc"
 version = "0.1.0"
-authors = ["TheV360 <v360code@gmail.com>"]
+authors = ["V360 <v360code@gmail.com>"]
 edition = "2018"
+publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+# stdweb = "0.4.20"
 # lexical = "^5.0"

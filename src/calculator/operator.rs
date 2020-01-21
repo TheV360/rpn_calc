@@ -1,5 +1,5 @@
-/// This enum contains all the operators that can be used.
-#[derive(Clone, Copy, PartialEq)]
+/// This enum contains all the operators that can be used in the RPN calc.
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Operator {
 	Add, Sub,
 	Mul, Div,
@@ -59,7 +59,7 @@ impl Operator {
 /// Simple Operator Associativity enum.
 /// 
 /// Associativity dictates how an operator behaves in the absence of parenthesis. ([More info](https://en.wikipedia.org/wiki/Operator_associativity))
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum OperatorAssociativity {
 	Left, Right,
 }

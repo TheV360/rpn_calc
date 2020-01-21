@@ -1,7 +1,7 @@
 use super::operator;
 
 /// The Token enum holds either a constant (stored as a 64-bit float) or an operator.
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Token {
 	Constant(f64),
 	Operator(operator::Operator),
@@ -12,14 +12,14 @@ pub enum Token {
 }
 
 impl Token {
-	pub fn is_value(self) -> bool {
+	pub fn is_value(&self) -> bool {
 		match self {
 			Token::Constant(_) | Token::Variable(_) => true,
 			_ => false,
 		}
 	}
 	
-	pub fn is_operator(self) -> bool {
+	pub fn is_operator(&self) -> bool {
 		match self {
 			Token::Operator(_) => true,
 			_ => false,
@@ -43,23 +43,23 @@ impl Expression {
 	/// If you're not familiar with infix notation, it's the one you use all the time for simple calculations, like `2 * 5 + 2`.
 	/// That expression would be sent to this function like so:
 	/// ```rust
-	/// let f = Expression::new_from_infix(Vec!(
+	/// let f = Expression::new_from_infix(vec![
 	/// 	Token::Constant(2.0),
-	/// 	Token::Operator(Operator::Mul),
+	/// 	Token::Operator(operator::Operator::Mul),
 	/// 	Token::Constant(5.0),
-	/// 	Token::Operator(Operator::Add),
+	/// 	Token::Operator(operator::Operator::Add),
 	/// 	Token::Constant(2.0),
-	/// ));
+	/// ]);
 	/// ```
 	/// The above code will return the same expression, but in reverse polish notation, so functionally equivalent to this:
 	/// ```rust
-	/// let f = Expression::new(Vec!(
+	/// let f = Expression::new(vec![
 	/// 	Token::Constant(2.0),
 	/// 	Token::Constant(5.0),
-	/// 	Token::Operator(Operator::Mul),
+	/// 	Token::Operator(operator::Operator::Mul),
 	/// 	Token::Constant(2.0),
-	/// 	Token::Operator(Operator::Add),
-	/// ));
+	/// 	Token::Operator(operator::Operator::Add),
+	/// ]);
 	/// ```
 	pub fn new_from_infix(tokens: Vec<Token>) -> Result<Expression, &'static str> {
 		let mut op_stack: Vec<Token> = Vec::new();
@@ -116,7 +116,6 @@ impl Expression {
 					}
 					
 					if !op_stack.is_empty() {
-						// oh no
 						return Err("Mismatched parentheses");
 					} else {
 						op_stack.pop();
@@ -139,7 +138,7 @@ impl Expression {
 	}
 	
 	/// Calculates an expression, returning a `f64`.
-	pub fn calculate(&mut self) -> Result<f64, &'static str> {
+	pub fn calculate(&self) -> Result<f64, &'static str> {
 		let mut stack: Vec<f64> = Vec::new();
 		
 		for i in 0..self.tokens.len() {
@@ -164,7 +163,7 @@ impl Expression {
 					let r = o.calculate(args)?;
 					stack.push(r);
 				},
-				Token::Variable(v) => {
+				Token::Variable(_v) => {
 					return Err("havent got around to adding variables. sorry,")
 				},
 				_ => {},
@@ -176,5 +175,9 @@ impl Expression {
 		} else {
 			Err("No calculation result.")
 		}
+	}
+	
+	pub fn print(&self) {
+		println!("{:?}", self.tokens);
 	}
 }
