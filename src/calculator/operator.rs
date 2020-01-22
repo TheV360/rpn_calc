@@ -1,5 +1,5 @@
 /// This enum contains all the operators that can be used in the RPN calc.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Operator {
 	Add, Sub,
 	Mul, Div,
@@ -25,8 +25,8 @@ impl Operator {
 			Operator::Add | Operator::Sub => 2,
 			Operator::Mul | Operator::Div | Operator::Mod => 3,
 			Operator::Pow => 4,
-			// If there's ever a negative operator, it should be like:
-			// Operator::Neg => 5,
+			// Unary operators should have the highest precedence.
+			// _ => 7,
 		}
 	}
 	
@@ -59,7 +59,7 @@ impl Operator {
 /// Simple Operator Associativity enum.
 /// 
 /// Associativity dictates how an operator behaves in the absence of parenthesis. ([More info](https://en.wikipedia.org/wiki/Operator_associativity))
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OperatorAssociativity {
 	Left, Right,
 }

@@ -1,19 +1,113 @@
+use std::io;
+
 mod calculator;
 
 use calculator::{expression, operator};
 
 fn main() {
-	println!("{}", expression::Expression::new(vec![
-		expression::Token::Constant(2.0),
-		expression::Token::Constant(2.0),
-		expression::Token::Operator(operator::Operator::Add),
-	]).calculate().unwrap());
-	
-	let res = "0.25sroihjdskfdjiuehogfnh".parse::<f64>();
-	match res {
-		Ok(r) => println!("{}", r),
-		Err(_) => println!("can't read"),
+	println!("Welcome to the worst calculator ever! Enter an infix expression.");
+	println!("Enter = to calculate and < to delete a token.");
+	loop {
+		let mut tokens = Vec::<expression::Token>::new();
+		let mut input_buffer = String::new();
+		
+		loop {
+			println!("Enter the token type.");
+			println!("Current tokens: {:?}", tokens);
+			
+			input_buffer.clear();
+			io::stdin().read_line(&mut input_buffer)
+				.expect("Can't read.");
+			
+			match input_buffer.trim() {
+				"const" => {
+					println!("Enter a constant.");
+					
+					input_buffer.clear();
+					io::stdin().read_line(&mut input_buffer)
+						.expect("Can't read.");
+					
+					let constant = match input_buffer.trim().parse::<f64>() {
+						Ok(c) => c,
+						Err(_) => {
+							println!("Enter a valid constant.");
+							continue;
+						},
+					};
+					
+					tokens.push(expression::Token::Constant(constant));
+				},
+				"op" => {
+					println!("Enter an operator.");
+					
+					input_buffer.clear();
+					io::stdin().read_line(&mut input_buffer).expect("Can't read.");
+					
+					let operator = match input_buffer.trim() {
+						"+" => operator::Operator::Add,
+						"-" => operator::Operator::Sub,
+						"*" => operator::Operator::Mul,
+						"/" => operator::Operator::Div,
+						"%" => operator::Operator::Mod,
+						"^" => operator::Operator::Pow,
+						_ => {
+							println!("Enter a valid operator. you entered \"{}\"", input_buffer);
+							continue;
+						},
+					};
+					
+					tokens.push(expression::Token::Operator(operator));
+				},
+				"(" => {
+					tokens.push(expression::Token::ParenthesisLeft);
+				},
+				")" => {
+					tokens.push(expression::Token::ParenthesisRight);
+				},
+				"=" => {
+					let resulting_expression = expression::Expression::new_from_infix(tokens);
+					
+					match resulting_expression {
+						Ok(exp) => {
+							match exp.calculate() {
+								Ok(n) => {
+									println!("expr = {}", n);
+								},
+								Err(e) => println!("Could not calculate expression. Error: {}", e),
+							}
+						},
+						Err(e) => println!("Could not make expression. Error: {}", e),
+					}
+					
+					break;
+				},
+				"<" => {
+					if !tokens.is_empty() {
+						tokens.pop().unwrap();
+					}
+				},
+				"exit" => {
+					break;
+				},
+				_ => {
+					println!("Enter a valid token type.");
+					continue;
+				}
+			}
+		}
+		
+		println!("Calculate again? (y/N)");
+		
+		input_buffer.clear();
+		io::stdin().read_line(&mut input_buffer)
+			.expect("Can't read.");
+		
+		match input_buffer.to_lowercase().trim() {
+			"y" => continue,
+			_ => break,
+		}
 	}
+	println!("Alright, bye!");
 }
 
 #[cfg(test)]
