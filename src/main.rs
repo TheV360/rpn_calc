@@ -9,6 +9,7 @@ fn main() {
 	println!("Enter = to calculate and < to delete a token.");
 	loop {
 		let mut tokens = Vec::<expression::Token>::new();
+		let mut undefined_variables = Vec::<char>::new();
 		let mut input_buffer = String::new();
 		
 		loop {
@@ -36,6 +37,27 @@ fn main() {
 					};
 					
 					tokens.push(expression::Token::Constant(constant));
+				},
+				"var" => {
+					println!("Enter a variable identifier.");
+					
+					input_buffer.clear();
+					io::stdin().read_line(&mut input_buffer)
+						.expect("Can't read.");
+					
+					let var_identifier = match input_buffer.trim().chars().next() {
+						Some(v) => v,
+						None => {
+							println!("Enter a valid single-character identifier.");
+							continue;
+						}
+					};
+					
+					tokens.push(expression::Token::Variable(var_identifier));
+					
+					if !undefined_variables.contains(&var_identifier) {
+						undefined_variables.push(var_identifier);
+					}
 				},
 				"op" => {
 					println!("Enter an operator.");
@@ -68,7 +90,27 @@ fn main() {
 					let resulting_expression = expression::Expression::new_from_infix(tokens);
 					
 					match resulting_expression {
-						Ok(exp) => {
+						Ok(mut exp) => {
+							undefined_variables.reverse();
+							while !undefined_variables.is_empty() {
+								let i = undefined_variables.last().unwrap();
+								println!("Enter a value for the {} variable.", i);
+								
+								input_buffer.clear();
+								io::stdin().read_line(&mut input_buffer)
+									.expect("Can't read.");
+								
+								let value = match input_buffer.trim().parse::<f64>() {
+									Ok(v) => v,
+									Err(_) => {
+										println!("Enter a valid value.");
+										continue;
+									},
+								};
+								
+								exp.set_variable(undefined_variables.pop().unwrap(), value);
+							}
+							
 							match exp.calculate() {
 								Ok(n) => {
 									println!("expr = {}", n);

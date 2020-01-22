@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use super::operator;
 
 /// The Token enum holds either a constant (stored as a 64-bit float) or an operator.
@@ -30,15 +32,16 @@ impl Token {
 /// The Expression struct holds a collection of tokens, and provides a variety of utility functions.
 pub struct Expression {
 	tokens: Vec<Token>,
+	variables: HashMap<char, f64>,
 }
 
 impl Expression {
-	/// Makes an `Expression` from a `Vec!` of `Tokens`.
+	/// Makes an `Expression` from a `vec!` of `Tokens`.
 	pub fn new(tokens: Vec<Token>) -> Expression {
-		Expression { tokens }
+		Expression { tokens, variables: HashMap::new() }
 	}
 	
-	/// Makes an `Expression` from a `Vec!` of `Tokens` organized using infix notation.
+	/// Makes an `Expression` from a `vec!` of `Tokens` organized using infix notation.
 	/// 
 	/// If you're not familiar with infix notation, it's the one you use all the time for simple calculations, like `2 * 5 + 2`.
 	/// That expression would be sent to this function like so:
@@ -134,7 +137,12 @@ impl Expression {
 			}
 		}
 		
-		Ok(Expression { tokens: result })
+		Ok(Expression { tokens: result, variables: HashMap::new() })
+	}
+	
+	/// Sets the variable specified by the identifier to a f64 value. All variables must be set before calculation.
+	pub fn set_variable(&mut self, identifier: char, value: f64) {
+		self.variables.insert(identifier, value);
 	}
 	
 	/// Calculates an expression, returning a `f64`.
@@ -163,8 +171,11 @@ impl Expression {
 					let r = o.calculate(args)?;
 					stack.push(r);
 				},
-				Token::Variable(_v) => {
-					return Err("havent got around to adding variables. sorry,")
+				Token::Variable(v) => {
+					match self.variables.get(&v) {
+						Some(val) => stack.push(*val),
+						None => return Err("Undefined variable."),
+					}
 				},
 				_ => {},
 			}
