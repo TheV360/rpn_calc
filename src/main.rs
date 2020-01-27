@@ -1,12 +1,29 @@
 use std::io;
 
 mod calculator;
+use crate::calculator::{expression, operator};
 
-use calculator::{expression, operator};
+mod graph;
+use crate::graph::window;
 
 fn main() {
+	println!("'graph' or 'calc'?");
+	let mut input_buffer = String::new();
+	
+	input_buffer.clear();
+	io::stdin().read_line(&mut input_buffer)
+		.expect("Can't read.");
+	
+	match input_buffer.to_lowercase().trim() {
+		"graph" => window::start(),
+		"calc" => worst_calculator(),
+		_ => {},
+	}
+}
+
+fn worst_calculator() {
 	println!("Welcome to the worst calculator ever! Enter an infix expression.");
-	println!("Enter = to calculate and < to delete a token.");
+	println!("Enter = to calculate and end to restart.");
 	loop {
 		let mut tokens = Vec::<expression::Token>::new();
 		let mut undefined_variables = Vec::<char>::new();
@@ -72,6 +89,7 @@ fn main() {
 						"/" => operator::Operator::Div,
 						"%" => operator::Operator::Mod,
 						"^" => operator::Operator::Pow,
+						"v" => operator::Operator::Rot,
 						_ => {
 							println!("Enter a valid operator. you entered \"{}\"", input_buffer);
 							continue;
@@ -91,6 +109,9 @@ fn main() {
 					
 					match resulting_expression {
 						Ok(mut exp) => {
+							println!("After converting to postfix:");
+							exp.print();
+							
 							undefined_variables.reverse();
 							while !undefined_variables.is_empty() {
 								let i = undefined_variables.last().unwrap();
@@ -123,12 +144,7 @@ fn main() {
 					
 					break;
 				},
-				"<" => {
-					if !tokens.is_empty() {
-						tokens.pop().unwrap();
-					}
-				},
-				"exit" => {
+				"end" => {
 					break;
 				},
 				_ => {

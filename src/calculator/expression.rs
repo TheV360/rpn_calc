@@ -119,7 +119,7 @@ impl Expression {
 					}
 					
 					if !op_stack.is_empty() {
-						return Err("Mismatched parentheses");
+						return Err("Missing right parentheses.");
 					} else {
 						op_stack.pop();
 					}
@@ -131,7 +131,7 @@ impl Expression {
 		while !op_stack.is_empty() {
 			let r = op_stack.pop().unwrap();
 			if r == Token::ParenthesisLeft {
-				return Err("Mismatched parentheses");
+				return Err("Missing left parentheses.");
 			} else {
 				result.push(r);
 			}
@@ -140,9 +140,19 @@ impl Expression {
 		Ok(Expression { tokens: result, variables: HashMap::new() })
 	}
 	
+	/// Makes an expression from a string. Useful for user-facing things.
+	pub fn new_from_infix_string() -> Result<Expression, &'static str> {
+		Err("whoops havent made this yet")
+	}
+	
 	/// Sets the variable specified by the identifier to a f64 value. All variables must be set before calculation.
 	pub fn set_variable(&mut self, identifier: char, value: f64) {
 		self.variables.insert(identifier, value);
+	}
+	
+	/// Simplifies an expression, looking for known values it can compute once.
+	pub fn simplify(&mut self) {
+		
 	}
 	
 	/// Calculates an expression, returning a `f64`.
@@ -163,13 +173,15 @@ impl Expression {
 						return Err("Not enough arguments.");
 					}
 					
+					// Get arguments from stack.
 					for _ in 0..arg_length {
 						args.push(stack.pop().unwrap());
 					}
+					// It has to be reversed because reasons.
 					args.reverse();
 					
-					let r = o.calculate(args)?;
-					stack.push(r);
+					let result = o.calculate(args)?;
+					stack.push(result);
 				},
 				Token::Variable(v) => {
 					match self.variables.get(&v) {
@@ -182,12 +194,17 @@ impl Expression {
 		}
 		
 		if !stack.is_empty() {
-			Ok(stack[0])
+			if stack.len() > 1 { // this is unnecessary but I think it helps sometimes
+				Err("Too many leftover results.")
+			} else {
+				Ok(stack[0])
+			}
 		} else {
 			Err("No calculation result.")
 		}
 	}
 	
+	/// Debug garbage
 	pub fn print(&self) {
 		println!("{:?}", self.tokens);
 	}

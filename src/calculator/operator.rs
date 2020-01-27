@@ -3,7 +3,8 @@
 pub enum Operator {
 	Add, Sub,
 	Mul, Div,
-	Mod, Pow,
+	Mod,
+	Pow, Rot,
 }
 
 impl Operator {
@@ -24,7 +25,7 @@ impl Operator {
 		match self {
 			Operator::Add | Operator::Sub => 2,
 			Operator::Mul | Operator::Div | Operator::Mod => 3,
-			Operator::Pow => 4,
+			Operator::Pow | Operator::Rot => 4,
 			// Unary operators should have the highest precedence.
 			// _ => 7,
 		}
@@ -35,7 +36,7 @@ impl Operator {
 	/// For more information on operator associativity, check the OperatorAssociativity enum page.
 	pub fn get_associativity(self) -> OperatorAssociativity {
 		match self {
-			Operator::Pow => OperatorAssociativity::Right,
+			Operator::Pow | Operator::Rot => OperatorAssociativity::Right,
 			_ => OperatorAssociativity::Left,
 		}
 	}
@@ -51,7 +52,8 @@ impl Operator {
 			Operator::Div => Ok(args[0] / args[1]),
 			Operator::Mod => Ok(args[0] % args[1]),
 			Operator::Pow => Ok(args[0].powf(args[1])),
-			// _ => Err("Unknown operator."),
+			Operator::Rot => Ok(args[1].powf(args[0].recip())),
+			_ => Err("Unknown operator."),
 		}
 	}
 }
