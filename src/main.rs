@@ -99,13 +99,17 @@ fn worst_calculator() {
 					tokens.push(expression::Token::Operator(operator));
 				},
 				"(" => {
-					tokens.push(expression::Token::ParenthesisLeft);
+					tokens.push(expression::Token::Parenthesis(expression::ParenthesisDirection::Left));
 				},
 				")" => {
-					tokens.push(expression::Token::ParenthesisRight);
+					tokens.push(expression::Token::Parenthesis(expression::ParenthesisDirection::Right));
 				},
 				"=" => {
-					let resulting_expression = expression::Expression::new_from_infix(tokens);
+					input_buffer.clear();
+					io::stdin().read_line(&mut input_buffer)
+						.expect("Can't read.");
+					
+					let resulting_expression = expression::Expression::new_from_infix(expression::Expression::infix_tokens_from_string(&input_buffer).unwrap());
 					
 					match resulting_expression {
 						Ok(mut exp) => {
@@ -199,11 +203,11 @@ mod tests {
 		]).unwrap().calculate().unwrap(), 0.5);
 		
 		let my_expression = expression::Expression::new_from_infix(vec![ // (2 + 5) * 6 ^ 2 = 252
-			expression::Token::ParenthesisLeft,
+			expression::Token::Parenthesis(expression::ParenthesisDirection::Left),
 			expression::Token::Constant(2.0),
 			expression::Token::Operator(operator::Operator::Add),
 			expression::Token::Constant(5.0),
-			expression::Token::ParenthesisRight,
+			expression::Token::Parenthesis(expression::ParenthesisDirection::Right),
 			expression::Token::Operator(operator::Operator::Mul),
 			expression::Token::Constant(6.0),
 			expression::Token::Operator(operator::Operator::Pow),
@@ -227,12 +231,33 @@ mod tests {
 	}
 	
 	#[test]
+	fn infix_expression_from_string() {
+		let my_expression = expression::Expression::new_from_infix(expression::Expression::infix_tokens_from_string("2+(2^5)/8").unwrap()).unwrap();
+		
+		assert_eq!(my_expression.calculate().unwrap(), 6.0);
+	}
+	
+	#[test]
+	fn missing_left_paren() {
+		assert!(expression::Expression::new_from_infix(expression::Expression::infix_tokens_from_string("2+2^5)/8").unwrap()).is_err());
+	}
+	
+	#[test]
+	fn missing_right_paren() {
+		assert!(expression::Expression::new_from_infix(expression::Expression::infix_tokens_from_string("2+(2^5/8").unwrap()).is_err());
+	}
+	
+	#[test]
 	fn error_handling() {
-		assert!(!expression::Expression::new_from_infix(vec![
+		assert!(!(expression::Expression::new_from_infix(vec![
 			expression::Token::Constant(1.0),
 			expression::Token::Operator(operator::Operator::Div),
 			expression::Token::Operator(operator::Operator::Div),
 			expression::Token::Constant(2.0),
-		]).unwrap().calculate().is_ok());
+		]).unwrap().calculate()).is_ok());
+	}
+	
+	#[test]
+	fn basic_simplify() {
 	}
 }

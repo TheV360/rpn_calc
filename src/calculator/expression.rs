@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use regex::Regex;
 
 use super::operator;
 
@@ -8,9 +9,14 @@ pub enum Token {
 	Constant(f64),
 	Operator(operator::Operator),
 	Variable(char),
-	ParenthesisLeft,
-	ParenthesisRight,
+	Parenthesis(ParenthesisDirection),
 	None,
+}
+
+/// Why not
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ParenthesisDirection {
+	Left, Right,
 }
 
 impl Token {
@@ -73,8 +79,8 @@ impl Expression {
 			let prev_token = { if i > 0 { tokens[i-1] } else { Token::None } };
 			
 			// Implicit multiplication match statement
-			if (prev_token.is_value() || prev_token == Token::ParenthesisRight)
-			&& (token.is_value() || token == Token::ParenthesisLeft) {
+			if (prev_token.is_value() || prev_token == Token::Parenthesis(ParenthesisDirection::Right))
+			&& (token.is_value() || token == Token::Parenthesis(ParenthesisDirection::Left)) {
 				op_stack.push(Token::Operator(operator::Operator::Mul));
 			}
 			
@@ -106,53 +112,147 @@ impl Expression {
 					
 					op_stack.push(token);
 				},
-				Token::ParenthesisLeft => op_stack.push(token),
-				Token::ParenthesisRight => {
-					while !op_stack.is_empty() {
-						let op = op_stack.pop().unwrap();
-						
-						if op == Token::ParenthesisLeft {
-							break;
-						} else {
-							result.push(op);
+				Token::Parenthesis(d) => match d {
+					ParenthesisDirection::Left => op_stack.push(token),
+					ParenthesisDirection::Right => {
+						// Search through the stack for a left parenthesis.
+						loop {
+							let op = op_stack.pop().unwrap();
+							
+							if op == Token::Parenthesis(ParenthesisDirection::Left) {
+								break;
+							} else {
+								result.push(op);
+								if op_stack.is_empty() {
+									return Err("Missing left parentheses.");
+								}
+							}
 						}
-					}
-					
-					if !op_stack.is_empty() {
-						return Err("Missing right parentheses.");
-					} else {
-						op_stack.pop();
-					}
+					},
 				},
 				_ => {},
 			}
 		}
 		
+		// Dump rest of op_stack onto the result.
 		while !op_stack.is_empty() {
-			let r = op_stack.pop().unwrap();
-			if r == Token::ParenthesisLeft {
-				return Err("Missing left parentheses.");
+			let op = op_stack.pop().unwrap();
+			
+			// If there was a parenthesis, somebody screwed up.
+			// Those should've been consumed a long time ago.
+			if op == Token::Parenthesis(ParenthesisDirection::Left) {
+				return Err("Missing right parentheses.");
 			} else {
-				result.push(r);
+				result.push(op);
 			}
 		}
 		
 		Ok(Expression { tokens: result, variables: HashMap::new() })
 	}
 	
-	/// Makes an expression from a string. Useful for user-facing things.
-	pub fn new_from_infix_string() -> Result<Expression, &'static str> {
-		Err("whoops havent made this yet")
+	/// Makes a vec of infix tokens from a string. Useful for user-facing things.
+	pub fn infix_tokens_from_string(input: &str) -> Result<Vec<Token>, &'static str> {
+		//TODO: don't initialize Regex stuff every time.
+		//TODO: variables
+		let mut result: Vec<Token> = Vec::new();
+		
+		let regex_variables = Regex::new(r"[a-z]").unwrap(); // amazing
+		// let regex_constants = Regex::new(r"(?:\-?)(?:(?:\d*\.\d+)|(?:\d+\.\d*)|(?:\d))").unwrap();
+		let regex_constants = Regex::new(r"(?:(?:\d*\.\d+)|(?:\d+\.\d*)|(?:\d))").unwrap();
+		let regex_operators = Regex::new(r"[\+\-\*/%\^]").unwrap();
+		let regex_parenthesis = Regex::new("[\\(\\)]").unwrap(); //TODO: why doesn't this work as a raw string?
+		
+		// nope. not how you do this
+		enum InfixStringRegexMatchesType {
+			Variable, Constant, Operator, Parenthesis
+		}
+		struct InfixStringRegexMatches {
+			start: usize,
+			end: usize,
+			token_type: InfixStringRegexMatchesType,
+		}
+		
+		let mut matches: Vec<InfixStringRegexMatches> = Vec::new();
+		
+		for cap in regex_variables.find_iter(input) {
+			matches.push(InfixStringRegexMatches {
+				start: cap.start(), end: cap.end(), token_type: InfixStringRegexMatchesType::Variable,
+			});
+		}
+		
+		for cap in regex_constants.find_iter(input) {
+			matches.push(InfixStringRegexMatches {
+				start: cap.start(), end: cap.end(), token_type: InfixStringRegexMatchesType::Constant,
+			});
+		}
+		
+		for cap in regex_operators.find_iter(input) {
+			matches.push(InfixStringRegexMatches {
+				start: cap.start(), end: cap.end(), token_type: InfixStringRegexMatchesType::Operator,
+			});
+		}
+		
+		for cap in regex_parenthesis.find_iter(input) {
+			matches.push(InfixStringRegexMatches {
+				start: cap.start(), end: cap.end(), token_type: InfixStringRegexMatchesType::Parenthesis,
+			});
+		}
+		
+		matches.sort_by(|m1: &InfixStringRegexMatches, m2: &InfixStringRegexMatches| m1.start.cmp(&m2.start));
+		
+		for cap in matches.iter() {
+			match cap.token_type {
+				InfixStringRegexMatchesType::Variable => {
+					let variable = match (&input[cap.start..cap.end]).chars().next() {
+						Some(v) => v,
+						None => return Err("I think I saw a variable but it's gone now. How?!?!?!"),
+					};
+					
+					result.push(Token::Variable(variable));
+				},
+				InfixStringRegexMatchesType::Constant => {
+					let constant = match &input[cap.start..cap.end].parse::<f64>() {
+						Ok(c) => *c,
+						Err(_) => return Err("Could not parse f64."),
+					};
+					
+					result.push(Token::Constant(constant));
+				},
+				InfixStringRegexMatchesType::Operator => {
+					let operator = match &input[cap.start..cap.end] {
+						"+" => operator::Operator::Add,
+						"-" => operator::Operator::Sub,
+						"*" => operator::Operator::Mul,
+						"/" => operator::Operator::Div,
+						"%" => operator::Operator::Mod,
+						"^" => operator::Operator::Pow,
+						_ => return Err("Could not parse operator. Unknown operator?"),
+					};
+					
+					result.push(Token::Operator(operator));
+				},
+				InfixStringRegexMatchesType::Parenthesis => {
+					result.push(Token::Parenthesis(match &input[cap.start..cap.end] {
+						"(" => ParenthesisDirection::Left,
+						")" => ParenthesisDirection::Right,
+						_ => return Err("ah. very cool. Could not parse parenthesis."),
+					}));
+				},
+			}
+		}
+		
+		Ok(result)
 	}
 	
 	/// Sets the variable specified by the identifier to a f64 value. All variables must be set before calculation.
+	// TODO: is this how builders work?
 	pub fn set_variable(&mut self, identifier: char, value: f64) {
 		self.variables.insert(identifier, value);
 	}
 	
 	/// Simplifies an expression, looking for known values it can compute once.
-	pub fn simplify(&mut self) {
-		
+	pub fn simplify(&mut self) -> Result<(), &'static str> {
+		unimplemented!();
 	}
 	
 	/// Calculates an expression, returning a `f64`.
@@ -208,4 +308,10 @@ impl Expression {
 	pub fn print(&self) {
 		println!("{:?}", self.tokens);
 	}
+}
+
+impl std::fmt::Debug for Expression {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Expr {:?}", self.tokens)
+    }
 }
