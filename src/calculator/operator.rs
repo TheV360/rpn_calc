@@ -9,22 +9,6 @@ pub enum Operator {
 	Pow, Rot,
 }
 
-/*impl FromStr for Operator {
-	type Err = std::num::ParseIntError;
-	
-	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		match s {
-			"+" => Ok(Operator::Add),
-			"-" => Ok(Operator::Sub),
-			"*" => Ok(Operator::Mul),
-			"/" => Ok(Operator::Div),
-			"%" => Ok(Operator::Mod),
-			"^" => Ok(Operator::Pow),
-			_ => panic!("Operator FromStr says: oh no sorry todo oh god sorry"), //TODO: make an error type? Not sure how this works.
-		}
-	}
-}*/
-
 // TODO: decide if I should have UnaryOperator and BinaryOperator. aaaaaaaaaaa
 
 impl Operator {

@@ -36,6 +36,7 @@ impl Token {
 }
 
 /// The Expression struct holds a collection of tokens, and provides a variety of utility functions.
+#[derive(Clone)]
 pub struct Expression {
 	tokens: Vec<Token>,
 	variables: HashMap<char, f64>,
@@ -151,18 +152,19 @@ impl Expression {
 	}
 	
 	/// Makes a vec of infix tokens from a string. Useful for user-facing things.
-	pub fn infix_tokens_from_string(input: &str) -> Result<Vec<Token>, &'static str> {
+	pub fn infix_tokens_from_str(input: &str) -> Result<Vec<Token>, &'static str> {
 		//TODO: don't initialize Regex stuff every time.
-		//TODO: variables
+		//TODO: variables could be better
 		let mut result: Vec<Token> = Vec::new();
 		
-		let regex_variables = Regex::new(r"[a-z]").unwrap(); // amazing
+		let regex_variables = Regex::new("[^\\.\\d\\s\\+\\-\\*/%\\^\\(\\)]").unwrap(); // amazing
 		// let regex_constants = Regex::new(r"(?:\-?)(?:(?:\d*\.\d+)|(?:\d+\.\d*)|(?:\d))").unwrap();
-		let regex_constants = Regex::new(r"(?:(?:\d*\.\d+)|(?:\d+\.\d*)|(?:\d))").unwrap();
+		let regex_constants = Regex::new(r"(?:\d*\.\d+)|(?:\d+\.\d*)|(?:\d+)").unwrap();
 		let regex_operators = Regex::new(r"[\+\-\*/%\^]").unwrap();
 		let regex_parenthesis = Regex::new("[\\(\\)]").unwrap(); //TODO: why doesn't this work as a raw string?
 		
 		// nope. not how you do this
+		#[derive(Clone, Copy, PartialEq, Eq)]
 		enum InfixStringRegexMatchesType {
 			Variable, Constant, Operator, Parenthesis
 		}
@@ -173,30 +175,18 @@ impl Expression {
 		}
 		
 		let mut matches: Vec<InfixStringRegexMatches> = Vec::new();
+		let get_matches_for = |input: &str, matches: &mut Vec<InfixStringRegexMatches>, r: &Regex, token: InfixStringRegexMatchesType| {
+			for cap in r.find_iter(input) {
+				matches.push(InfixStringRegexMatches {
+					start: cap.start(), end: cap.end(), token_type: token,
+				});
+			}
+		};
 		
-		for cap in regex_variables.find_iter(input) {
-			matches.push(InfixStringRegexMatches {
-				start: cap.start(), end: cap.end(), token_type: InfixStringRegexMatchesType::Variable,
-			});
-		}
-		
-		for cap in regex_constants.find_iter(input) {
-			matches.push(InfixStringRegexMatches {
-				start: cap.start(), end: cap.end(), token_type: InfixStringRegexMatchesType::Constant,
-			});
-		}
-		
-		for cap in regex_operators.find_iter(input) {
-			matches.push(InfixStringRegexMatches {
-				start: cap.start(), end: cap.end(), token_type: InfixStringRegexMatchesType::Operator,
-			});
-		}
-		
-		for cap in regex_parenthesis.find_iter(input) {
-			matches.push(InfixStringRegexMatches {
-				start: cap.start(), end: cap.end(), token_type: InfixStringRegexMatchesType::Parenthesis,
-			});
-		}
+		get_matches_for(input, &mut matches, &regex_variables, InfixStringRegexMatchesType::Variable);
+		get_matches_for(input, &mut matches, &regex_constants, InfixStringRegexMatchesType::Constant);
+		get_matches_for(input, &mut matches, &regex_operators, InfixStringRegexMatchesType::Operator);
+		get_matches_for(input, &mut matches, &regex_parenthesis, InfixStringRegexMatchesType::Parenthesis);
 		
 		matches.sort_by(|m1: &InfixStringRegexMatches, m2: &InfixStringRegexMatches| m1.start.cmp(&m2.start));
 		
@@ -244,8 +234,8 @@ impl Expression {
 		Ok(result)
 	}
 	
+	// TODO: make builder?
 	/// Sets the variable specified by the identifier to a f64 value. All variables must be set before calculation.
-	// TODO: is this how builders work?
 	pub fn set_variable(&mut self, identifier: char, value: f64) {
 		self.variables.insert(identifier, value);
 	}

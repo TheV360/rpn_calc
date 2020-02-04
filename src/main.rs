@@ -14,10 +14,10 @@ fn main() {
 	io::stdin().read_line(&mut input_buffer)
 		.expect("Can't read.");
 	
-	match input_buffer.to_lowercase().trim() {
-		"graph" => window::start(),
-		"calc" => worst_calculator(),
-		_ => {},
+	if input_buffer.to_lowercase().trim().starts_with("g") {
+		window::start();
+	} else {
+		worst_calculator();
 	}
 }
 
@@ -109,7 +109,7 @@ fn worst_calculator() {
 					io::stdin().read_line(&mut input_buffer)
 						.expect("Can't read.");
 					
-					let resulting_expression = expression::Expression::new_from_infix(expression::Expression::infix_tokens_from_string(&input_buffer).unwrap());
+					let resulting_expression = expression::Expression::new_from_infix(expression::Expression::infix_tokens_from_str(&input_buffer).unwrap());
 					
 					match resulting_expression {
 						Ok(mut exp) => {
@@ -174,7 +174,7 @@ fn worst_calculator() {
 
 #[cfg(test)]
 mod tests {
-	use super::calculator::{expression, operator};
+	use super::*;
 	
 	#[test]
 	fn calculate_expression() {
@@ -232,19 +232,19 @@ mod tests {
 	
 	#[test]
 	fn infix_expression_from_string() {
-		let my_expression = expression::Expression::new_from_infix(expression::Expression::infix_tokens_from_string("2+(2^5)/8").unwrap()).unwrap();
+		let my_expression = expression::Expression::new_from_infix(expression::Expression::infix_tokens_from_str("2.0+(2^5)/8").unwrap()).unwrap();
 		
 		assert_eq!(my_expression.calculate().unwrap(), 6.0);
 	}
 	
 	#[test]
 	fn missing_left_paren() {
-		assert!(expression::Expression::new_from_infix(expression::Expression::infix_tokens_from_string("2+2^5)/8").unwrap()).is_err());
+		assert!(expression::Expression::new_from_infix(expression::Expression::infix_tokens_from_str("2+2^5)/8").unwrap()).is_err());
 	}
 	
 	#[test]
 	fn missing_right_paren() {
-		assert!(expression::Expression::new_from_infix(expression::Expression::infix_tokens_from_string("2+(2^5/8").unwrap()).is_err());
+		assert!(expression::Expression::new_from_infix(expression::Expression::infix_tokens_from_str("2+(2^5/8").unwrap()).is_err());
 	}
 	
 	#[test]

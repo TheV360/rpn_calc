@@ -20,7 +20,6 @@ pub struct Window {
 }
 
 pub struct Graph {
-	offset: Point,
 	size: Point,
 	window: Window,
 	data: Vec<f64>,
@@ -44,7 +43,6 @@ impl Window {
 impl Graph {
 	pub fn new() -> Graph {
 		Graph {
-			offset: Point::new(0.0, 0.0),
 			size: Point::new(360.0 * (SCALE as f64), 240.0 * (SCALE as f64)),
 			window: Window::default(),
 			data: Vec::new(),
@@ -59,7 +57,10 @@ impl Graph {
 			percent = (i as f64) / (points as f64);
 			
 			expr.set_variable(x_axis, lerp(self.window.minimum.x, self.window.maximum.x, percent));
-			self.data.push(expr.calculate().unwrap());
+			match expr.calculate() {
+				Ok(r) => self.data.push(r),
+				Err(e) => println!("{}", e),
+			}
 		}
 	}
 	
@@ -84,6 +85,7 @@ impl Graph {
 			before_p = after_p;
 			after_p = (i as f64) / (points as f64);
 			
+			// TODO: maybe try draw_line_strip?
 			d.draw_line_ex(
 				Vector2::new((before_p * self.size.x) as f32, (inv_lerp(self.window.maximum.y, self.window.minimum.y, self.data[i - 1]) * self.size.y) as f32),
 				Vector2::new((after_p  * self.size.x) as f32, (inv_lerp(self.window.maximum.y, self.window.minimum.y, self.data[i    ]) * self.size.y) as f32),
