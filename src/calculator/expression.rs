@@ -27,25 +27,26 @@ impl Token {
 		}
 	}
 	
-	pub fn is_operator(&self) -> bool {
-		match self {
-			Token::Operator(_) => true,
-			_ => false,
-		}
-	}
+	// pub fn is_operator(&self) -> bool {
+	// 	match self {
+	// 		Token::Operator(_) => true,
+	// 		_ => false,
+	// 	}
+	// }
 }
+
+pub type ExpressionVariables = HashMap<char, f64>;
 
 /// The Expression struct holds a collection of tokens, and provides a variety of utility functions.
 #[derive(Clone)]
 pub struct Expression {
 	tokens: Vec<Token>,
-	variables: HashMap<char, f64>,
 }
 
 impl Expression {
 	/// Makes an `Expression` from a `vec!` of `Tokens`.
 	pub fn new(tokens: Vec<Token>) -> Expression {
-		Expression { tokens, variables: HashMap::new() }
+		Expression { tokens }
 	}
 	
 	/// Makes an `Expression` from a `vec!` of `Tokens` organized using infix notation.
@@ -93,6 +94,7 @@ impl Expression {
 					if !op_stack.is_empty() {
 						let mut next_token = op_stack[op_stack.len() - 1];
 						
+						// Very pretty code.
 						while match next_token {
 							// Token::Function(_) => true,
 							Token::Operator(o2) => 
@@ -102,8 +104,6 @@ impl Expression {
 						} {
 							result.push(op_stack.pop().unwrap());
 							if !op_stack.is_empty() {
-								// Eek! This won't work.
-								// or no, it will because of Copy and Clone.
 								next_token = op_stack[op_stack.len() - 1];
 							} else {
 								break;
@@ -148,7 +148,7 @@ impl Expression {
 			}
 		}
 		
-		Ok(Expression { tokens: result, variables: HashMap::new() })
+		Ok(Expression { tokens: result })
 	}
 	
 	/// Makes a vec of infix tokens from a string. Useful for user-facing things.
@@ -158,15 +158,15 @@ impl Expression {
 		let mut result: Vec<Token> = Vec::new();
 		
 		let regex_variables = Regex::new("[^\\.\\d\\s\\+\\-\\*/%\\^\\(\\)]").unwrap(); // amazing
-		// let regex_constants = Regex::new(r"(?:\-?)(?:(?:\d*\.\d+)|(?:\d+\.\d*)|(?:\d))").unwrap();
 		let regex_constants = Regex::new(r"(?:\d*\.\d+)|(?:\d+\.\d*)|(?:\d+)").unwrap();
 		let regex_operators = Regex::new(r"[\+\-\*/%\^]").unwrap();
+		let regex_functions = Regex::new(r"(?:sin|cos|tan|log|ln)").unwrap();
 		let regex_parenthesis = Regex::new("[\\(\\)]").unwrap(); //TODO: why doesn't this work as a raw string?
 		
-		// nope. not how you do this
+		// not pretty, but it functions.
 		#[derive(Clone, Copy, PartialEq, Eq)]
 		enum InfixStringRegexMatchesType {
-			Variable, Constant, Operator, Parenthesis
+			Variable, Constant, Operator, Function, Parenthesis
 		}
 		struct InfixStringRegexMatches {
 			start: usize,
@@ -193,23 +193,19 @@ impl Expression {
 		for cap in matches.iter() {
 			match cap.token_type {
 				InfixStringRegexMatchesType::Variable => {
-					let variable = match (&input[cap.start..cap.end]).chars().next() {
+					result.push(Token::Variable(match (&input[cap.start..cap.end]).chars().next() {
 						Some(v) => v,
 						None => return Err("I think I saw a variable but it's gone now. How?!?!?!"),
-					};
-					
-					result.push(Token::Variable(variable));
+					}));
 				},
 				InfixStringRegexMatchesType::Constant => {
-					let constant = match &input[cap.start..cap.end].parse::<f64>() {
+					result.push(Token::Constant(match &input[cap.start..cap.end].parse::<f64>() {
 						Ok(c) => *c,
 						Err(_) => return Err("Could not parse f64."),
-					};
-					
-					result.push(Token::Constant(constant));
+					}));
 				},
 				InfixStringRegexMatchesType::Operator => {
-					let operator = match &input[cap.start..cap.end] {
+					result.push(Token::Operator(match &input[cap.start..cap.end] {
 						"+" => operator::Operator::Add,
 						"-" => operator::Operator::Sub,
 						"*" => operator::Operator::Mul,
@@ -217,9 +213,8 @@ impl Expression {
 						"%" => operator::Operator::Mod,
 						"^" => operator::Operator::Pow,
 						_ => return Err("Could not parse operator. Unknown operator?"),
-					};
-					
-					result.push(Token::Operator(operator));
+					}));
+				},
 				},
 				InfixStringRegexMatchesType::Parenthesis => {
 					result.push(Token::Parenthesis(match &input[cap.start..cap.end] {
@@ -234,19 +229,19 @@ impl Expression {
 		Ok(result)
 	}
 	
-	// TODO: make builder?
-	/// Sets the variable specified by the identifier to a f64 value. All variables must be set before calculation.
-	pub fn set_variable(&mut self, identifier: char, value: f64) {
-		self.variables.insert(identifier, value);
-	}
+	// /// Simplifies an expression, looking for known values it can compute once.
+	// pub fn simplify(&mut self) -> Result<(), &'static str> {
+	// 	unimplemented!();
+	// }
 	
-	/// Simplifies an expression, looking for known values it can compute once.
-	pub fn simplify(&mut self) -> Result<(), &'static str> {
-		unimplemented!();
-	}
-	
-	/// Calculates an expression, returning a `f64`.
+	/// Calculates an expression, returning a `f64`. Uses `calculate_with_variables` internally
 	pub fn calculate(&self) -> Result<f64, &'static str> {
+		let vars = ExpressionVariables::new();
+		self.calculate_with_variables(&vars)
+	}
+	
+	/// Calculates an expression using an ExpressionVariables table.
+	pub fn calculate_with_variables(&self, variables: &ExpressionVariables) -> Result<f64, &'static str> {
 		let mut stack: Vec<f64> = Vec::new();
 		
 		for i in 0..self.tokens.len() {
@@ -274,7 +269,7 @@ impl Expression {
 					stack.push(result);
 				},
 				Token::Variable(v) => {
-					match self.variables.get(&v) {
+					match variables.get(&v) {
 						Some(val) => stack.push(*val),
 						None => return Err("Undefined variable."),
 					}

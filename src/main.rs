@@ -27,6 +27,7 @@ fn worst_calculator() {
 	loop {
 		let mut tokens = Vec::<expression::Token>::new();
 		let mut undefined_variables = Vec::<char>::new();
+		let mut variables = expression::ExpressionVariables::new();
 		let mut input_buffer = String::new();
 		
 		loop {
@@ -133,10 +134,10 @@ fn worst_calculator() {
 									},
 								};
 								
-								exp.set_variable(undefined_variables.pop().unwrap(), value);
+								variables.insert(undefined_variables.pop().unwrap(), value);
 							}
 							
-							match exp.calculate() {
+							match exp.calculate_with_variables(&variables) {
 								Ok(n) => {
 									println!("expr = {}", n);
 								},

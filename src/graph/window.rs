@@ -2,7 +2,7 @@ use raylib::prelude::*;
 // use std::ffi::{CStr, CString};
 
 use crate::calculator::{expression, operator};
-use super::graph;
+use super::{graph, graph3d};
 
 const SCALE: i32 = 4;
 
@@ -41,6 +41,7 @@ pub fn start() {
 	let a_very_smart_way_to_do_things = format!("Did you know? {:?} = {}", exp, exp.calculate().expect("OH NO"));
 	
 	let mut graph = graph::Graph::new();
+	let mut graph3d = graph3d::Graph3D::new();
 	
 	// let mut expression_to_graph = expression::Expression::new(vec![
 	// 	expression::Token::Variable('😂'),
@@ -54,26 +55,43 @@ pub fn start() {
 	let mut expression_to_graph = expression::Expression::new_from_infix(expression::Expression::infix_tokens_from_str(&function_input_string).unwrap()).unwrap();
 	graph.calculate_expression(&mut expression_to_graph, 'x', 65);
 	
+	let mut function_input_string_2 = String::from("(x-5)(x+5)(z-5)(z+5)/360");
+	
+	let mut expression_to_graph_2 = expression::Expression::new_from_infix(expression::Expression::infix_tokens_from_str(&function_input_string_2).unwrap()).unwrap();
+	graph3d.calculate_expression(&mut expression_to_graph_2, 'x', 'z', 65);
+	
+	let mut cam = raylib::core::camera::Camera3D::perspective(
+		Vector3::new(4.0, 2.0, 4.0),
+		Vector3::new(0.0, 1.8, 0.0),
+		Vector3::new(0.0, 1.0, 0.0),
+		60.0
+	);
+	
+	rl.set_camera_mode(&cam, CameraMode::CAMERA_FIRST_PERSON);
+	rl.set_target_fps(60);
+	
 	while !rl.window_should_close() {
 		let pressed_key = rl.get_key_pressed_number();
 		
 		if let Some(key) = pressed_key {
 			if let Some(key_char) = std::char::from_u32(key) {
-				function_input_string.push(key_char);
+				if key_char != 'w' && key_char != 'a' && key_char != 's' && key_char != 'd' {
+					function_input_string_2.push(key_char);
+				}
 			}
 		}
 		
 		if rl.is_key_pressed(KeyboardKey::KEY_BACKSPACE) {
-			function_input_string.pop();
+			function_input_string_2.pop();
 		}
 		
 		if rl.is_key_pressed(KeyboardKey::KEY_ENTER) {
-			match expression::Expression::infix_tokens_from_str(&function_input_string) {
+			match expression::Expression::infix_tokens_from_str(&function_input_string_2) {
 				Ok(t) => {
 					match expression::Expression::new_from_infix(t) {
 						Ok(e) => {
-							expression_to_graph = e.clone();
-							graph.calculate_expression(&mut expression_to_graph, 'x', 65);
+							expression_to_graph_2 = e.clone();
+							graph3d.calculate_expression(&mut expression_to_graph_2, 'x', 'z', 65);
 						},
 						Err(_) => println!("error message"),
 					}
@@ -82,13 +100,21 @@ pub fn start() {
 			}
 		}
 		
+		rl.update_camera(&mut cam);
+		
 		let mut d = rl.begin_drawing(&thread);
 		d.clear_background(Color::BLACK);
 		
-		graph.draw(&mut d);
+		// graph.draw(&mut d);
+		
+		{
+			let mut d = d.begin_mode_3D(cam);
+			
+			graph3d.draw(&mut d);
+		}
 		
 		d.draw_text(&a_very_smart_way_to_do_things, 12, 48, 20, Color::RED);
-		d.draw_text(&function_input_string, 12, 180, 40, Color::PINK);
+		d.draw_text(&function_input_string_2, 12, 180, 40, Color::PINK);
 		
 		// d.draw_gui(&wb);
 		// if let raylib::rgui::DrawResult::Bool(b) = d.draw_gui(&btn) {
