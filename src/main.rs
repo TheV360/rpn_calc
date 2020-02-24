@@ -7,7 +7,15 @@ mod graph;
 use crate::graph::window;
 
 fn main() {
-	println!("'graph' or 'calc'?");
+	let exp_1 = expression::Expression::new_from_infix(expression::Expression::infix_tokens_from_str("sin(x)cos(z)").unwrap()).unwrap();
+	let exp_2 = expression::Expression::new_from_infix(expression::Expression::infix_tokens_from_str("sin(x)*cos(z)").unwrap()).unwrap();
+	let exp_3 = expression::Expression::new_from_infix(expression::Expression::infix_tokens_from_str("sin(x)+cos(z)").unwrap()).unwrap();
+	
+	println!("{:?}", exp_1);
+	println!("{:?}", exp_2);
+	println!("{:?}", exp_3);
+	
+	// println!("'graph' or 'calc'?");
 	let mut input_buffer = String::new();
 	
 	input_buffer.clear();
@@ -17,160 +25,47 @@ fn main() {
 	if input_buffer.to_lowercase().trim().starts_with("g") {
 		window::start();
 	} else {
-		worst_calculator();
+		//worst_calculator();
+		best_calc();
 	}
 }
 
-fn worst_calculator() {
-	println!("Welcome to the worst calculator ever! Enter an infix expression.");
-	println!("Enter = to calculate and end to restart.");
+fn best_calc() {
+	println!("Slap an expression in. I evaluate it.");
+	
+	let mut input_buffer = String::new();
 	loop {
-		let mut tokens = Vec::<expression::Token>::new();
-		let mut undefined_variables = Vec::<char>::new();
-		let mut variables = expression::ExpressionVariables::new();
-		let mut input_buffer = String::new();
-		
-		loop {
-			println!("Enter the token type.");
-			println!("Current tokens: {:?}", tokens);
-			
-			input_buffer.clear();
-			io::stdin().read_line(&mut input_buffer)
-				.expect("Can't read.");
-			
-			match input_buffer.trim() {
-				"const" => {
-					println!("Enter a constant.");
-					
-					input_buffer.clear();
-					io::stdin().read_line(&mut input_buffer)
-						.expect("Can't read.");
-					
-					let constant = match input_buffer.trim().parse::<f64>() {
-						Ok(c) => c,
-						Err(_) => {
-							println!("Enter a valid constant.");
-							continue;
-						},
-					};
-					
-					tokens.push(expression::Token::Constant(constant));
-				},
-				"var" => {
-					println!("Enter a variable identifier.");
-					
-					input_buffer.clear();
-					io::stdin().read_line(&mut input_buffer)
-						.expect("Can't read.");
-					
-					let var_identifier = match input_buffer.trim().chars().next() {
-						Some(v) => v,
-						None => {
-							println!("Enter a valid single-character identifier.");
-							continue;
-						}
-					};
-					
-					tokens.push(expression::Token::Variable(var_identifier));
-					
-					if !undefined_variables.contains(&var_identifier) {
-						undefined_variables.push(var_identifier);
-					}
-				},
-				"op" => {
-					println!("Enter an operator.");
-					
-					input_buffer.clear();
-					io::stdin().read_line(&mut input_buffer).expect("Can't read.");
-					
-					let operator = match input_buffer.trim() {
-						"+" => operator::Operator::Add,
-						"-" => operator::Operator::Sub,
-						"*" => operator::Operator::Mul,
-						"/" => operator::Operator::Div,
-						"%" => operator::Operator::Mod,
-						"^" => operator::Operator::Pow,
-						"v" => operator::Operator::Rot,
-						_ => {
-							println!("Enter a valid operator. you entered \"{}\"", input_buffer);
-							continue;
-						},
-					};
-					
-					tokens.push(expression::Token::Operator(operator));
-				},
-				"(" => {
-					tokens.push(expression::Token::Parenthesis(expression::ParenthesisDirection::Left));
-				},
-				")" => {
-					tokens.push(expression::Token::Parenthesis(expression::ParenthesisDirection::Right));
-				},
-				"=" => {
-					input_buffer.clear();
-					io::stdin().read_line(&mut input_buffer)
-						.expect("Can't read.");
-					
-					let resulting_expression = expression::Expression::new_from_infix(expression::Expression::infix_tokens_from_str(&input_buffer).unwrap());
-					
-					match resulting_expression {
-						Ok(mut exp) => {
-							println!("After converting to postfix:");
-							exp.print();
-							
-							undefined_variables.reverse();
-							while !undefined_variables.is_empty() {
-								let i = undefined_variables.last().unwrap();
-								println!("Enter a value for the {} variable.", i);
-								
-								input_buffer.clear();
-								io::stdin().read_line(&mut input_buffer)
-									.expect("Can't read.");
-								
-								let value = match input_buffer.trim().parse::<f64>() {
-									Ok(v) => v,
-									Err(_) => {
-										println!("Enter a valid value.");
-										continue;
-									},
-								};
-								
-								variables.insert(undefined_variables.pop().unwrap(), value);
-							}
-							
-							match exp.calculate_with_variables(&variables) {
-								Ok(n) => {
-									println!("expr = {}", n);
-								},
-								Err(e) => println!("Could not calculate expression. Error: {}", e),
-							}
-						},
-						Err(e) => println!("Could not make expression. Error: {}", e),
-					}
-					
-					break;
-				},
-				"end" => {
-					break;
-				},
-				_ => {
-					println!("Enter a valid token type.");
-					continue;
-				}
-			}
-		}
-		
-		println!("Calculate again? (y/N)");
-		
 		input_buffer.clear();
 		io::stdin().read_line(&mut input_buffer)
 			.expect("Can't read.");
 		
-		match input_buffer.to_lowercase().trim() {
-			"y" => continue,
-			_ => break,
+		let tokens = match expression::Expression::infix_tokens_from_str(&input_buffer) {
+			Ok(t) => {
+				println!("infix tokens: {:?}", t);
+				t
+			},
+			Err(e) => {
+				println!("Couldn't read! Error: {}", e);
+				continue;
+			}
+		};
+		
+		let expr = match expression::Expression::new_from_infix(tokens) {
+			Ok(ex) => {
+				println!("to expression: {:?}", ex);
+				ex
+			},
+			Err(e) => {
+				println!("Couldn't make expression! Error: {}", e);
+				continue;
+			}
+		};
+		
+		match expr.calculate() {
+			Ok(r) => println!("= {}", r),
+			Err(e) => println!("Couldn't calculate! Error: {}", e),
 		}
 	}
-	println!("Alright, bye!");
 }
 
 #[cfg(test)]

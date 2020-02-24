@@ -7,10 +7,11 @@ use super::operator;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Token {
 	Constant(f64),
-	Operator(operator::Operator),
 	Variable(char),
+	Operator(operator::Operator),
+	Function(operator::Function),
 	Parenthesis(ParenthesisDirection),
-	None,
+	Comma,
 }
 
 /// Why not
@@ -27,12 +28,19 @@ impl Token {
 		}
 	}
 	
-	// pub fn is_operator(&self) -> bool {
-	// 	match self {
-	// 		Token::Operator(_) => true,
-	// 		_ => false,
-	// 	}
-	// }
+	pub fn is_operator(&self) -> bool {
+		match self {
+			Token::Operator(_) => true,
+			_ => false,
+		}
+	}
+	
+	pub fn is_function(&self) -> bool {
+		match self {
+			Token::Function(_) => true,
+			_ => false,
+		}
+	}
 }
 
 pub type ExpressionVariables = HashMap<char, f64>;
@@ -76,15 +84,19 @@ impl Expression {
 		let mut op_stack: Vec<Token> = Vec::new();
 		let mut result: Vec<Token> = Vec::new();
 		
+		let tokens = Expression::process_implicit_tokens(&tokens);
+		
 		for i in 0..tokens.len() {
 			let token = tokens[i];
-			let prev_token = { if i > 0 { tokens[i-1] } else { Token::None } };
+			let prev_token: Option<Token> = { if i > 0 { Some(tokens[i-1]) } else { None } };
 			
 			// Implicit multiplication match statement
-			if (prev_token.is_value() || prev_token == Token::Parenthesis(ParenthesisDirection::Right))
-			&& (token.is_value() || token == Token::Parenthesis(ParenthesisDirection::Left)) {
-				op_stack.push(Token::Operator(operator::Operator::Mul));
-			}
+			// TODO: Formatting could be better.
+			// if prev_token.is_some()
+			// && (prev_token.unwrap().is_value() || prev_token.unwrap() == Token::Parenthesis(ParenthesisDirection::Right))
+			// && (token.is_value() || token == Token::Parenthesis(ParenthesisDirection::Left)) {
+			// 	op_stack.push(Token::Operator(operator::Operator::Mul));
+			// }
 			
 			// Shunting-yard algorithm match statement
 			match token {
@@ -96,7 +108,7 @@ impl Expression {
 						
 						// Very pretty code.
 						while match next_token {
-							// Token::Function(_) => true,
+							Token::Function(_) => true,
 							Token::Operator(o2) => 
 								o2.get_precedence() > o.get_precedence() ||
 								o2.get_precedence() == o.get_precedence() && o2.get_associativity() == operator::OperatorAssociativity::Left,
@@ -113,6 +125,7 @@ impl Expression {
 					
 					op_stack.push(token);
 				},
+				Token::Function(_) => op_stack.push(token),
 				Token::Parenthesis(d) => match d {
 					ParenthesisDirection::Left => op_stack.push(token),
 					ParenthesisDirection::Right => {
@@ -133,6 +146,13 @@ impl Expression {
 				},
 				_ => {},
 			}
+			
+			// // Weird garbage.
+			// if prev_token.is_some()
+			// && (prev_token.unwrap().is_value() || prev_token.unwrap() == Token::Parenthesis(ParenthesisDirection::Right))
+			// && (match token {Token::Operator(o) => o.get_parameters() != 2, _ => false}) {
+			// 	op_stack.push(Token::Operator(operator::Operator::Mul));
+			// }
 		}
 		
 		// Dump rest of op_stack onto the result.
@@ -151,17 +171,47 @@ impl Expression {
 		Ok(Expression { tokens: result })
 	}
 	
+	/// Adds implicit multiplication stuff.
+	pub fn process_implicit_tokens(input: &Vec<Token>) -> Vec<Token> {
+		let mut result: Vec<Token> = Vec::new();
+		
+		for i in 0..input.len() {
+			let token = input[i];
+			let prev_token: Option<Token>;
+			
+			if i > 0 {
+				prev_token = Some(input[i - 1]);
+			} else {
+				prev_token = None;
+			}
+			
+			if prev_token.is_some() {
+				let prev_token = prev_token.unwrap();
+				
+				if (prev_token.is_value() || prev_token == Token::Parenthesis(ParenthesisDirection::Right))
+				&& (token.is_value() || token.is_function() || token == Token::Parenthesis(ParenthesisDirection::Left)) {
+					result.push(Token::Operator(operator::Operator::Mul));
+					println!("added *");
+				}
+			}
+			
+			result.push(token);
+		}
+		
+		result
+	}
+	
 	/// Makes a vec of infix tokens from a string. Useful for user-facing things.
 	pub fn infix_tokens_from_str(input: &str) -> Result<Vec<Token>, &'static str> {
 		//TODO: don't initialize Regex stuff every time.
 		//TODO: variables could be better
 		let mut result: Vec<Token> = Vec::new();
 		
-		let regex_variables = Regex::new("[^\\.\\d\\s\\+\\-\\*/%\\^\\(\\)]").unwrap(); // amazing
+		let regex_variables = Regex::new(r"(?:x|z)").unwrap(); // TODO: add support for emojis again. that was fun.
 		let regex_constants = Regex::new(r"(?:\d*\.\d+)|(?:\d+\.\d*)|(?:\d+)").unwrap();
-		let regex_operators = Regex::new(r"[\+\-\*/%\^]").unwrap();
-		let regex_functions = Regex::new(r"(?:sin|cos|tan|log|ln)").unwrap();
-		let regex_parenthesis = Regex::new("[\\(\\)]").unwrap(); //TODO: why doesn't this work as a raw string?
+		let regex_operators = Regex::new(r"(?:\+|\-|\*|/|%|\^)").unwrap();
+		let regex_functions = Regex::new(r"(?:sin|cos|tan|log|ln|abs|sgn)").unwrap();
+		let regex_parenthesis = Regex::new(r"[\(\)]").unwrap(); //TODO: why doesn't this work as a raw string?
 		
 		// not pretty, but it functions.
 		#[derive(Clone, Copy, PartialEq, Eq)]
@@ -171,6 +221,7 @@ impl Expression {
 		struct InfixStringRegexMatches {
 			start: usize,
 			end: usize,
+			// slice: &str, // TODO: find out how to use this, like `slice: &input[cap.range()]` in the constructor
 			token_type: InfixStringRegexMatchesType,
 		}
 		
@@ -186,6 +237,7 @@ impl Expression {
 		get_matches_for(input, &mut matches, &regex_variables, InfixStringRegexMatchesType::Variable);
 		get_matches_for(input, &mut matches, &regex_constants, InfixStringRegexMatchesType::Constant);
 		get_matches_for(input, &mut matches, &regex_operators, InfixStringRegexMatchesType::Operator);
+		get_matches_for(input, &mut matches, &regex_functions, InfixStringRegexMatchesType::Function);
 		get_matches_for(input, &mut matches, &regex_parenthesis, InfixStringRegexMatchesType::Parenthesis);
 		
 		matches.sort_by(|m1: &InfixStringRegexMatches, m2: &InfixStringRegexMatches| m1.start.cmp(&m2.start));
@@ -195,12 +247,12 @@ impl Expression {
 				InfixStringRegexMatchesType::Variable => {
 					result.push(Token::Variable(match (&input[cap.start..cap.end]).chars().next() {
 						Some(v) => v,
-						None => return Err("I think I saw a variable but it's gone now. How?!?!?!"),
+						None => return Err("Scary error - could not parse variable."),
 					}));
 				},
 				InfixStringRegexMatchesType::Constant => {
-					result.push(Token::Constant(match &input[cap.start..cap.end].parse::<f64>() {
-						Ok(c) => *c,
+					result.push(Token::Constant(match (&input[cap.start..cap.end]).parse::<f64>() {
+						Ok(c) => c,
 						Err(_) => return Err("Could not parse f64."),
 					}));
 				},
@@ -215,12 +267,24 @@ impl Expression {
 						_ => return Err("Could not parse operator. Unknown operator?"),
 					}));
 				},
-				},
+				InfixStringRegexMatchesType::Function => {
+					result.push(Token::Function(match &input[cap.start..cap.end] {
+						"sin" => operator::Function::Sin,
+						"cos" => operator::Function::Cos,
+						"tan" => operator::Function::Tan,
+						"csc" => operator::Function::Csc,
+						"sec" => operator::Function::Sec,
+						"cot" => operator::Function::Cot,
+						"abs" => operator::Function::Abs,
+						"sgn" => operator::Function::Sgn,
+						_ => return Err("Could not parse function. Unknown function?"),
+					}));
+				}
 				InfixStringRegexMatchesType::Parenthesis => {
 					result.push(Token::Parenthesis(match &input[cap.start..cap.end] {
 						"(" => ParenthesisDirection::Left,
 						")" => ParenthesisDirection::Right,
-						_ => return Err("ah. very cool. Could not parse parenthesis."),
+						_ => return Err("Scary error - could not parse parenthesis."),
 					}));
 				},
 			}
@@ -250,8 +314,8 @@ impl Expression {
 			match token {
 				Token::Constant(c) => stack.push(c),
 				Token::Operator(o) => {
-					// todo: move most of this back into operator impl.
-					let arg_length = o.get_arguments();
+					// TODO: move most of this back into operator impl.
+					let arg_length = o.get_parameters(); // oops
 					let mut args = Vec::new();
 					
 					if stack.len() < arg_length {
@@ -266,6 +330,25 @@ impl Expression {
 					args.reverse();
 					
 					let result = o.calculate(args)?;
+					stack.push(result);
+				},
+				Token::Function(f) => {
+					// TODO: ewwwwww do not like just copy-pasting this
+					let arg_length = f.get_parameters(); // oops
+					let mut args = Vec::new();
+					
+					if stack.len() < arg_length {
+						return Err("Not enough arguments.");
+					}
+					
+					// Get arguments from stack.
+					for _ in 0..arg_length {
+						args.push(stack.pop().unwrap());
+					}
+					// It has to be reversed because reasons.
+					args.reverse();
+					
+					let result = f.calculate(args)?;
 					stack.push(result);
 				},
 				Token::Variable(v) => {
