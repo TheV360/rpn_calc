@@ -2,7 +2,7 @@ use raylib::prelude::*;
 use std::ffi::{CStr, CString};
 
 use crate::calculator::{expression, operator};
-use super::graph3d;
+use super::{graph3d, common};
 
 const SCALE: i32 = 4;
 
@@ -48,11 +48,25 @@ pub fn start() {
 	// TODO: complain to raylib-rs dev about lack of support for BMFonts.
 	// let font = rl.load_font(&thread, "resources/6x8_font.fnt").expect("Failed to load font.");
 	
-	let mut graph3d = graph3d::Graph3D::new();
+	// let mut function_input_string = String::from("sin(x)cos(z)");
+	// let mut expression_to_graph = expression::Expression::new_from_infix(expression::Expression::infix_tokens_from_str(&function_input_string).unwrap()).unwrap();
+	// let mut graph3d = graph3d::Graph3D::new(common::GraphArgs3D::Cartesian);
+	// match graph3d.calculate_expression(vec![&mut expression_to_graph], 8) {
+	// 	Err(e) => println!("{}", e), _ => {},
+	// };
 	
-	let mut function_input_string = String::from("sin(x)cos(z)");
-	let mut expression_to_graph = expression::Expression::new_from_infix(expression::Expression::infix_tokens_from_str(&function_input_string).unwrap()).unwrap();
-	graph3d.calculate_expression(&mut expression_to_graph, 'x', 'z', 8);
+	let mut function_input_strings = vec![
+		String::from("8sin(t)"), String::from("8cos(t)"), String::from("8cos(32t)")
+	];
+	let mut active = 0;
+	let mut expressions_to_graph: Vec<expression::Expression> = Vec::new();
+	for i in 0..function_input_strings.len() {
+		expressions_to_graph.push(expression::Expression::new_from_infix(expression::Expression::infix_tokens_from_str(&function_input_strings[i]).unwrap()).unwrap());
+	}
+	let mut graph3d = graph3d::Graph3D::new(common::GraphArgs3D::Parametric(common::MinMax { min: -3.0, max: 3.0 }));
+	match graph3d.calculate_expression(&mut expressions_to_graph, 8) {
+		Err(e) => println!("{}", e), _ => {},
+	};
 	
 	let mut cam = raylib::core::camera::Camera3D::perspective(
 		Vector3::new(0.0, 1.8, 0.0),
@@ -83,27 +97,37 @@ pub fn start() {
 		
 		if let Some(key) = pressed_key {
 			if let Some(key_char) = std::char::from_u32(key) {
-				function_input_string.push(key_char);
+				function_input_strings[active].push(key_char);
 			}
 		}
 		
 		if rl.is_key_pressed(KeyboardKey::KEY_BACKSPACE) {
-			function_input_string.pop();
+			function_input_strings[active].pop();
 		}
 		
 		if rl.is_key_pressed(KeyboardKey::KEY_ENTER) {
-			match expression::Expression::infix_tokens_from_str(&function_input_string) {
+			/*match expression::Expression::infix_tokens_from_str(&function_input_string) {
 				Ok(t) => {
 					match expression::Expression::new_from_infix(t) {
 						Ok(e) => {
 							expression_to_graph = e.clone();
 							println!("{:?}", expression_to_graph);
-							graph3d.calculate_expression(&mut expression_to_graph, 'x', 'z', 32);
+							match graph3d.calculate_expression(vec![&mut expression_to_graph], 32) {
+								Err(e) => println!("{}", e), _ => {},
+							};
 						},
 						Err(_) => println!("error message"),
 					}
 				},
 				Err(_) => println!("Failed to make expression."),
+			}*/
+			
+			expressions_to_graph = Vec::new();
+			for i in 0..function_input_strings.len() {
+				expressions_to_graph.push(expression::Expression::new_from_infix(expression::Expression::infix_tokens_from_str(&function_input_strings[i]).unwrap()).unwrap());
+			}
+			match graph3d.calculate_expression(&mut expressions_to_graph, 64*64) {
+				Err(e) => println!("{}", e), _ => {},
 			}
 		}
 		
@@ -152,6 +176,8 @@ pub fn start() {
 			graph3d.draw(&mut d);
 		}
 		
-		d.draw_text(&function_input_string, 12, 16, 40, Color::PINK);
+		for i in 0..function_input_strings.len() {
+			d.draw_text(&function_input_strings[i], 12, 16 + 40 * (i as i32), 40, Color::PINK);
+		}
 	}
 }

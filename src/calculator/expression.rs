@@ -207,7 +207,8 @@ impl Expression {
 		//TODO: variables could be better
 		let mut result: Vec<Token> = Vec::new();
 		
-		let regex_variables = Regex::new(r"(?:x|z)").unwrap(); // TODO: add support for emojis again. that was fun.
+		let regex_variables = Regex::new(r"(?:x|z|t)").unwrap(); // TODO: add support for emojis again. that was fun.
+		// TODO: this also breaks tan(). Yikes.
 		let regex_constants = Regex::new(r"(?:\d*\.\d+)|(?:\d+\.\d*)|(?:\d+)").unwrap();
 		let regex_operators = Regex::new(r"(?:\+|\-|\*|/|%|\^)").unwrap();
 		let regex_functions = Regex::new(r"(?:sin|cos|tan|log|ln|abs|sgn)").unwrap();

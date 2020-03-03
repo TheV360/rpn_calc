@@ -12,3 +12,4 @@ regex = "1"
 raylib = "1.0.0"
 # stdweb = "0.4.20"
 # lexical = "^5.0"
+# petgraph = "0.5.0" # might be overkill?

@@ -1,4 +1,8 @@
+#![allow(dead_code)]
+
 use std::io;
+
+mod util;
 
 mod calculator;
 use crate::calculator::{expression, operator};
