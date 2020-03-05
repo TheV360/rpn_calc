@@ -1,6 +1,4 @@
 use std::collections::HashMap;
-use regex::Regex;
-
 use super::operator;
 
 /// The Token enum holds either a constant (stored as a 64-bit float) or an operator.
@@ -88,15 +86,6 @@ impl Expression {
 		
 		for i in 0..tokens.len() {
 			let token = tokens[i];
-			let prev_token: Option<Token> = { if i > 0 { Some(tokens[i-1]) } else { None } };
-			
-			// Implicit multiplication match statement
-			// TODO: Formatting could be better.
-			// if prev_token.is_some()
-			// && (prev_token.unwrap().is_value() || prev_token.unwrap() == Token::Parenthesis(ParenthesisDirection::Right))
-			// && (token.is_value() || token == Token::Parenthesis(ParenthesisDirection::Left)) {
-			// 	op_stack.push(Token::Operator(operator::Operator::Mul));
-			// }
 			
 			// Shunting-yard algorithm match statement
 			match token {
@@ -146,13 +135,6 @@ impl Expression {
 				},
 				_ => {},
 			}
-			
-			// // Weird garbage.
-			// if prev_token.is_some()
-			// && (prev_token.unwrap().is_value() || prev_token.unwrap() == Token::Parenthesis(ParenthesisDirection::Right))
-			// && (match token {Token::Operator(o) => o.get_parameters() != 2, _ => false}) {
-			// 	op_stack.push(Token::Operator(operator::Operator::Mul));
-			// }
 		}
 		
 		// Dump rest of op_stack onto the result.
@@ -191,7 +173,7 @@ impl Expression {
 				if (prev_token.is_value() || prev_token == Token::Parenthesis(ParenthesisDirection::Right))
 				&& (token.is_value() || token.is_function() || token == Token::Parenthesis(ParenthesisDirection::Left)) {
 					result.push(Token::Operator(operator::Operator::Mul));
-					println!("added *");
+					// println!("added *");
 				}
 			}
 			
@@ -204,44 +186,48 @@ impl Expression {
 	/// Makes a vec of infix tokens from a string. Useful for user-facing things.
 	pub fn infix_tokens_from_str(input: &str) -> Result<Vec<Token>, &'static str> {
 		//TODO: don't initialize Regex stuff every time.
-		//TODO: variables could be better
 		let mut result: Vec<Token> = Vec::new();
 		
-		let regex_variables = Regex::new(r"(?:x|z|t)").unwrap(); // TODO: add support for emojis again. that was fun.
-		// TODO: this also breaks tan(). Yikes.
-		let regex_constants = Regex::new(r"(?:\d*\.\d+)|(?:\d+\.\d*)|(?:\d+)").unwrap();
-		let regex_operators = Regex::new(r"(?:\+|\-|\*|/|%|\^)").unwrap();
-		let regex_functions = Regex::new(r"(?:sin|cos|tan|log|ln|abs|sgn)").unwrap();
-		let regex_parenthesis = Regex::new(r"[\(\)]").unwrap(); //TODO: why doesn't this work as a raw string?
+		let big_regex = regex::Regex::new(r"(?x) # Order of these lines determines the priority.
+			 (\(|\))                             # Matches any parenthesis.
+			|((?:\d*\.\d+)|(?:\d+\.\d*)|(?:\d+)) # Matches any constants.
+			|(\+|\-|\*|/|%|\^)                   # Matches any operators.
+			|(sin|cos|tan|log|ln|abs|sgn)        # Matches any functions.
+			|(\S)                                # Matches any variables.
+		").unwrap();
 		
-		// not pretty, but it functions.
+		// TODO: this sucks. I didn't want to think about anything while doing this, and it shows.
 		#[derive(Clone, Copy, PartialEq, Eq)]
 		enum InfixStringRegexMatchesType {
-			Variable, Constant, Operator, Function, Parenthesis
+			Parenthesis, Constant, Operator, Function, Variable,
 		}
 		struct InfixStringRegexMatches {
 			start: usize,
 			end: usize,
-			// slice: &str, // TODO: find out how to use this, like `slice: &input[cap.range()]` in the constructor
 			token_type: InfixStringRegexMatchesType,
 		}
 		
 		let mut matches: Vec<InfixStringRegexMatches> = Vec::new();
-		let get_matches_for = |input: &str, matches: &mut Vec<InfixStringRegexMatches>, r: &Regex, token: InfixStringRegexMatchesType| {
-			for cap in r.find_iter(input) {
-				matches.push(InfixStringRegexMatches {
-					start: cap.start(), end: cap.end(), token_type: token,
-				});
+		for cap in big_regex.captures_iter(input) {
+			for i in 1..cap.len() {
+				if let Some(c) = cap.get(i) {
+					matches.push(InfixStringRegexMatches {
+						start: c.start(),
+						end: c.end(),
+						token_type: match i {
+							// Ewwww
+							1 => InfixStringRegexMatchesType::Parenthesis,
+							2 => InfixStringRegexMatchesType::Constant,
+							3 => InfixStringRegexMatchesType::Operator,
+							4 => InfixStringRegexMatchesType::Function,
+							5 => InfixStringRegexMatchesType::Variable,
+							_ => panic!("uhhhhhh what"),
+						},
+					});
+					break;
+				}
 			}
-		};
-		
-		get_matches_for(input, &mut matches, &regex_variables, InfixStringRegexMatchesType::Variable);
-		get_matches_for(input, &mut matches, &regex_constants, InfixStringRegexMatchesType::Constant);
-		get_matches_for(input, &mut matches, &regex_operators, InfixStringRegexMatchesType::Operator);
-		get_matches_for(input, &mut matches, &regex_functions, InfixStringRegexMatchesType::Function);
-		get_matches_for(input, &mut matches, &regex_parenthesis, InfixStringRegexMatchesType::Parenthesis);
-		
-		matches.sort_by(|m1: &InfixStringRegexMatches, m2: &InfixStringRegexMatches| m1.start.cmp(&m2.start));
+		}
 		
 		for cap in matches.iter() {
 			match cap.token_type {

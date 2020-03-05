@@ -7,6 +7,17 @@ use crate::graph::common;
 const SCALE: i32 = 4;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+pub enum GraphArgs2D {
+	Cartesian,
+	Parametric(common::MinMax),
+	Polar(common::MinMax),
+}
+
+impl Default for GraphArgs2D {
+	fn default() -> Self { GraphArgs2D::Cartesian }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Point { pub x: f64, pub y: f64, }
 
 impl From<Vector2> for Point {
@@ -26,14 +37,6 @@ pub struct Window {
 	pub maximum: Point,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct Graph {
-	pub args: common::GraphArgs2D,
-	pub size: Point,
-	pub window: Window,
-	data: Vec<Point>,
-}
-
 impl Default for Window {
 	fn default() -> Self {
 		Window {
@@ -43,8 +46,16 @@ impl Default for Window {
 	}
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct Graph {
+	pub args: GraphArgs2D,
+	pub size: Point,
+	pub window: Window,
+	data: Vec<Point>,
+}
+
 impl Graph {
-	pub fn new(args: common::GraphArgs2D) -> Graph {
+	pub fn new(args: GraphArgs2D) -> Graph {
 		Graph {
 			args,
 			size: Point { x: 360.0 * (SCALE as f64), y: 240.0 * (SCALE as f64) },
@@ -53,13 +64,13 @@ impl Graph {
 		}
 	}
 	
-	pub fn calculate_expression(&mut self, expr: &mut Vec<expression::Expression>, points: usize) -> Result<(), &'static str> {
+	pub fn calculate_expression(&mut self, expr: &Vec<expression::Expression>, points: usize) -> Result<(), &'static str> {
 		let mut variables = expression::ExpressionVariables::new();
 		
 		self.data.clear();
 		
 		match self.args {
-			common::GraphArgs2D::Cartesian => {
+			GraphArgs2D::Cartesian => {
 				assert!(expr.len() == 1);
 				
 				let mut x;
@@ -72,7 +83,7 @@ impl Graph {
 					self.data.push(Point { x, y });
 				}
 			},
-			common::GraphArgs2D::Parametric(t_minmax) => {
+			GraphArgs2D::Parametric(t_minmax) => {
 				assert!(expr.len() == 2);
 				
 				let mut t;
@@ -86,7 +97,7 @@ impl Graph {
 					self.data.push(Point { x, y });
 				}
 			},
-			common::GraphArgs2D::Polar(t_minmax) => {
+			GraphArgs2D::Polar(t_minmax) => {
 				assert!(expr.len() == 1);
 				
 				let mut theta;

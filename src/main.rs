@@ -5,33 +5,24 @@ use std::io;
 mod util;
 
 mod calculator;
-use crate::calculator::{expression, operator};
+use crate::calculator::expression;
 
 mod graph;
 use crate::graph::window;
 
 fn main() {
-	let exp_1 = expression::Expression::new_from_infix(expression::Expression::infix_tokens_from_str("sin(x)cos(z)").unwrap()).unwrap();
-	let exp_2 = expression::Expression::new_from_infix(expression::Expression::infix_tokens_from_str("sin(x)*cos(z)").unwrap()).unwrap();
-	let exp_3 = expression::Expression::new_from_infix(expression::Expression::infix_tokens_from_str("sin(x)+cos(z)").unwrap()).unwrap();
-	
-	println!("{:?}", exp_1);
-	println!("{:?}", exp_2);
-	println!("{:?}", exp_3);
-	
-	// println!("'graph' or 'calc'?");
-	let mut input_buffer = String::new();
+	/*let mut input_buffer = String::new();
 	
 	input_buffer.clear();
 	io::stdin().read_line(&mut input_buffer)
 		.expect("Can't read.");
 	
-	if input_buffer.to_lowercase().trim().starts_with("g") {
+	if input_buffer.to_lowercase().trim().starts_with("g") {*/
 		window::start();
-	} else {
+	/*} else {
 		//worst_calculator();
 		best_calc();
-	}
+	}*/
 }
 
 fn best_calc() {
@@ -75,6 +66,7 @@ fn best_calc() {
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use super::calculator::operator;
 	
 	#[test]
 	fn calculate_expression() {
@@ -132,19 +124,29 @@ mod tests {
 	
 	#[test]
 	fn infix_expression_from_string() {
-		let my_expression = expression::Expression::new_from_infix(expression::Expression::infix_tokens_from_str("2.0+(2^5)/8").unwrap()).unwrap();
+		let my_expression = expression::Expression::new_from_infix(
+			expression::Expression::infix_tokens_from_str("2.0+(2^5)/8").unwrap()
+		).unwrap();
 		
 		assert_eq!(my_expression.calculate().unwrap(), 6.0);
 	}
 	
 	#[test]
 	fn missing_left_paren() {
-		assert!(expression::Expression::new_from_infix(expression::Expression::infix_tokens_from_str("2+2^5)/8").unwrap()).is_err());
+		assert!(
+			expression::Expression::new_from_infix(
+				expression::Expression::infix_tokens_from_str("2+2^5)/8").unwrap()
+			).is_err()
+		);
 	}
 	
 	#[test]
 	fn missing_right_paren() {
-		assert!(expression::Expression::new_from_infix(expression::Expression::infix_tokens_from_str("2+(2^5/8").unwrap()).is_err());
+		assert!(
+			expression::Expression::new_from_infix(
+				expression::Expression::infix_tokens_from_str("2+(2^5/8").unwrap()
+			).is_err()
+		);
 	}
 	
 	#[test]
