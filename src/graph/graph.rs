@@ -78,7 +78,7 @@ impl Graph {
 					x = util::lerp(self.window.minimum.x, self.window.maximum.x, (i as f64) / (points as f64));
 					variables.insert('x', x);
 					
-					let y = expr[0].calculate_with_variables(&variables)?;
+					let y = expr[0].calculate(Some(&variables))?;
 					
 					self.data.push(Point { x, y });
 				}
@@ -91,8 +91,8 @@ impl Graph {
 					t = util::lerp(t_minmax.min, t_minmax.max, (i as f64) / (points as f64));
 					variables.insert('t', t);
 					
-					let x = expr[0].calculate_with_variables(&variables)?;
-					let y = expr[1].calculate_with_variables(&variables)?;
+					let x = expr[0].calculate(Some(&variables))?;
+					let y = expr[1].calculate(Some(&variables))?;
 					
 					self.data.push(Point { x, y });
 				}
@@ -105,7 +105,7 @@ impl Graph {
 					theta = util::lerp(t_minmax.min, t_minmax.max, (i as f64) / (points as f64));
 					variables.insert('t', theta);
 					
-					let r = expr[0].calculate_with_variables(&variables)?;
+					let r = expr[0].calculate(Some(&variables))?;
 					
 					self.data.push(Point { x: r * theta.cos(), y: r * theta.sin(), });
 				}

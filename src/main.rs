@@ -56,7 +56,7 @@ fn best_calc() {
 			}
 		};
 		
-		match expr.calculate() {
+		match expr.calculate(None) {
 			Ok(r) => println!("= {}", r),
 			Err(e) => println!("Couldn't calculate! Error: {}", e),
 		}

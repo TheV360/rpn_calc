@@ -88,7 +88,7 @@ impl Graph3D {
 						z = util::lerp(self.window.minimum.z, self.window.maximum.z, (j as f64) / (points as f64));
 						variables.insert('z', z);
 						
-						let y = expr[0].calculate_with_variables(&variables)?;
+						let y = expr[0].calculate(Some(&variables))?;
 						
 						self.data.push(Point3D { x, y, z });
 					}
@@ -102,9 +102,9 @@ impl Graph3D {
 					t = util::lerp(t_minmax.min, t_minmax.max, (i as f64) / (points as f64));
 					variables.insert('t', t);
 					
-					let x = expr[0].calculate_with_variables(&variables)?;
-					let y = expr[1].calculate_with_variables(&variables)?;
-					let z = expr[2].calculate_with_variables(&variables)?;
+					let x = expr[0].calculate(Some(&variables))?;
+					let y = expr[1].calculate(Some(&variables))?;
+					let z = expr[2].calculate(Some(&variables))?;
 					
 					self.data.push(Point3D { x, y, z });
 				}
@@ -133,22 +133,36 @@ impl Graph3D {
 		fn grey(n: f64) -> Color {
 			return Color::new(255, 255, 255, (n * 255.) as u8);
 		}
-		for i in 1..self.data.len() {
-			// if i % self.tmp_data_width == 0 { continue; }
-			d.draw_line_3d(
-				Vector3::from(self.graph_to_screen_point3d(&self.data[i - 1])),
-				Vector3::from(self.graph_to_screen_point3d(&self.data[i    ])),
-				grey(1.0 - ((i as f64 + d.get_time()) / (self.data.len() as f64)) / 2.0)
-			);
-		}
 		
-		// for i in self.tmp_data_width..self.data.len() {
-		// 	d.draw_line_3d(
-		// 		Vector3::from(self.graph_to_screen_point3d(&self.data[i - self.tmp_data_width])),
-		// 		Vector3::from(self.graph_to_screen_point3d(&self.data[i                      ])),
-		// 		Color::WHITE
-		// 	);
-		// }
+		match self.args {
+			GraphArgs3D::Cartesian => {
+				for i in 1..self.data.len() {
+					if i % self.tmp_data_width == 0 { continue; }
+					d.draw_line_3d(
+						Vector3::from(self.graph_to_screen_point3d(&self.data[i - 1])),
+						Vector3::from(self.graph_to_screen_point3d(&self.data[i    ])),
+						Color::WHITE
+					);
+				}
+				
+				for i in self.tmp_data_width..self.data.len() {
+					d.draw_line_3d(
+						Vector3::from(self.graph_to_screen_point3d(&self.data[i - self.tmp_data_width])),
+						Vector3::from(self.graph_to_screen_point3d(&self.data[i                      ])),
+						Color::WHITE
+					);
+				}
+			},
+			GraphArgs3D::Parametric(_) => {
+				for i in 1..self.data.len() {
+					d.draw_line_3d(
+						Vector3::from(self.graph_to_screen_point3d(&self.data[i - 1])),
+						Vector3::from(self.graph_to_screen_point3d(&self.data[i    ])),
+						grey(1.0 - (((i as f64) / (self.data.len() as f64) + d.get_time() / 10.0) % 1.0) * 0.8)
+					);
+				}
+			},
+		}
 		
 		let thickness = 0.05;
 		d.draw_cube(Vector3::new(self.position.x as f32, axis.y as f32, axis.z as f32), self.size.x as f32, thickness, thickness, Color::RED);

@@ -1,7 +1,9 @@
 use std::collections::HashMap;
+use core::convert::TryFrom;
+
 use super::operator;
 
-/// The Token enum holds either a constant (stored as a 64-bit float) or an operator.
+/// The Token enum holds a variety of types.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Token {
 	Constant(f64),
@@ -16,6 +18,17 @@ pub enum Token {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ParenthesisDirection {
 	Left, Right,
+}
+impl TryFrom<&str> for ParenthesisDirection {
+	type Error = &'static str;
+	
+	fn try_from(s: &str) -> Result<Self, Self::Error> {
+		match s {
+			"(" => Ok(ParenthesisDirection::Left),
+			")" => Ok(ParenthesisDirection::Right),
+			_ => Err("Scary error - could not parse parenthesis."),
+		}
+	}
 }
 
 impl Token {
@@ -50,7 +63,7 @@ pub struct Expression {
 }
 
 impl Expression {
-	/// Makes an `Expression` from a `vec!` of `Tokens`.
+	/// Makes an `Expression` from a vector of `Token`s.
 	pub fn new(tokens: Vec<Token>) -> Expression {
 		Expression { tokens }
 	}
@@ -153,8 +166,8 @@ impl Expression {
 		Ok(Expression { tokens: result })
 	}
 	
-	/// Adds implicit multiplication stuff.
-	pub fn process_implicit_tokens(input: &Vec<Token>) -> Vec<Token> {
+	/// Adds implicit multiplication stuff. Only used internally.
+	fn process_implicit_tokens(input: &Vec<Token>) -> Vec<Token> {
 		let mut result: Vec<Token> = Vec::new();
 		
 		for i in 0..input.len() {
@@ -170,10 +183,12 @@ impl Expression {
 			if prev_token.is_some() {
 				let prev_token = prev_token.unwrap();
 				
-				if (prev_token.is_value() || prev_token == Token::Parenthesis(ParenthesisDirection::Right))
+				// TODO: make this look less awkward. or maybe just split Pi and E off into a "constants" token type.
+				if (prev_token.is_value() || prev_token == Token::Parenthesis(ParenthesisDirection::Right) ||
+					(prev_token.is_function() && match prev_token { Token::Function(f) => f.get_parameters() < 1, _ => false, })
+				)
 				&& (token.is_value() || token.is_function() || token == Token::Parenthesis(ParenthesisDirection::Left)) {
 					result.push(Token::Operator(operator::Operator::Mul));
-					// println!("added *");
 				}
 			}
 			
@@ -183,7 +198,7 @@ impl Expression {
 		result
 	}
 	
-	/// Makes a vec of infix tokens from a string. Useful for user-facing things.
+	/// Makes a vector of infix tokens from a string. Useful for user-facing things.
 	pub fn infix_tokens_from_str(input: &str) -> Result<Vec<Token>, &'static str> {
 		//TODO: don't initialize Regex stuff every time.
 		let mut result: Vec<Token> = Vec::new();
@@ -192,7 +207,7 @@ impl Expression {
 			 (\(|\))                             # Matches any parenthesis.
 			|((?:\d*\.\d+)|(?:\d+\.\d*)|(?:\d+)) # Matches any constants.
 			|(\+|\-|\*|/|%|\^)                   # Matches any operators.
-			|(sin|cos|tan|log|ln|abs|sgn)        # Matches any functions.
+			|(sin|cos|tan|csc|sec|cot|log|ln|abs|sgn|Pi|E) # Matches any functions.
 			|(\S)                                # Matches any variables.
 		").unwrap();
 		
@@ -217,10 +232,8 @@ impl Expression {
 						token_type: match i {
 							// Ewwww
 							1 => InfixStringRegexMatchesType::Parenthesis,
-							2 => InfixStringRegexMatchesType::Constant,
-							3 => InfixStringRegexMatchesType::Operator,
-							4 => InfixStringRegexMatchesType::Function,
-							5 => InfixStringRegexMatchesType::Variable,
+							2 => InfixStringRegexMatchesType::Constant, 3 => InfixStringRegexMatchesType::Operator,
+							4 => InfixStringRegexMatchesType::Function, 5 => InfixStringRegexMatchesType::Variable,
 							_ => panic!("uhhhhhh what"),
 						},
 					});
@@ -230,50 +243,23 @@ impl Expression {
 		}
 		
 		for cap in matches.iter() {
+			let tmp = &input[cap.start..cap.end];
 			match cap.token_type {
 				InfixStringRegexMatchesType::Variable => {
-					result.push(Token::Variable(match (&input[cap.start..cap.end]).chars().next() {
-						Some(v) => v,
+					match tmp.chars().next() {
+						Some(v) => result.push(Token::Variable(v)),
 						None => return Err("Scary error - could not parse variable."),
-					}));
+					}
 				},
 				InfixStringRegexMatchesType::Constant => {
-					result.push(Token::Constant(match (&input[cap.start..cap.end]).parse::<f64>() {
-						Ok(c) => c,
+					match tmp.parse::<f64>() {
+						Ok(c) => result.push(Token::Constant(c)),
 						Err(_) => return Err("Could not parse f64."),
-					}));
+					}
 				},
-				InfixStringRegexMatchesType::Operator => {
-					result.push(Token::Operator(match &input[cap.start..cap.end] {
-						"+" => operator::Operator::Add,
-						"-" => operator::Operator::Sub,
-						"*" => operator::Operator::Mul,
-						"/" => operator::Operator::Div,
-						"%" => operator::Operator::Mod,
-						"^" => operator::Operator::Pow,
-						_ => return Err("Could not parse operator. Unknown operator?"),
-					}));
-				},
-				InfixStringRegexMatchesType::Function => {
-					result.push(Token::Function(match &input[cap.start..cap.end] {
-						"sin" => operator::Function::Sin,
-						"cos" => operator::Function::Cos,
-						"tan" => operator::Function::Tan,
-						"csc" => operator::Function::Csc,
-						"sec" => operator::Function::Sec,
-						"cot" => operator::Function::Cot,
-						"abs" => operator::Function::Abs,
-						"sgn" => operator::Function::Sgn,
-						_ => return Err("Could not parse function. Unknown function?"),
-					}));
-				}
-				InfixStringRegexMatchesType::Parenthesis => {
-					result.push(Token::Parenthesis(match &input[cap.start..cap.end] {
-						"(" => ParenthesisDirection::Left,
-						")" => ParenthesisDirection::Right,
-						_ => return Err("Scary error - could not parse parenthesis."),
-					}));
-				},
+				InfixStringRegexMatchesType::Operator => result.push(Token::Operator(operator::Operator::try_from(tmp)?)),
+				InfixStringRegexMatchesType::Function => result.push(Token::Function(operator::Function::try_from(tmp)?)),
+				InfixStringRegexMatchesType::Parenthesis => result.push(Token::Parenthesis(ParenthesisDirection::try_from(tmp)?)),
 			}
 		}
 		
@@ -285,14 +271,8 @@ impl Expression {
 	// 	unimplemented!();
 	// }
 	
-	/// Calculates an expression, returning a `f64`. Uses `calculate_with_variables` internally
-	pub fn calculate(&self) -> Result<f64, &'static str> {
-		let vars = ExpressionVariables::new();
-		self.calculate_with_variables(&vars)
-	}
-	
-	/// Calculates an expression using an ExpressionVariables table.
-	pub fn calculate_with_variables(&self, variables: &ExpressionVariables) -> Result<f64, &'static str> {
+	/// Calculates an expression, returning a `f64`. If you want to use variables, you can also pass Some variables.
+	pub fn calculate(&self, variables: Option<&ExpressionVariables>) -> Result<f64, &'static str> {
 		let mut stack: Vec<f64> = Vec::new();
 		
 		for i in 0..self.tokens.len() {
@@ -339,9 +319,13 @@ impl Expression {
 					stack.push(result);
 				},
 				Token::Variable(v) => {
-					match variables.get(&v) {
-						Some(val) => stack.push(*val),
-						None => return Err("Undefined variable."),
+					if let Some(variables) = variables {
+						match variables.get(&v) {
+							Some(val) => stack.push(*val),
+							None => return Err("Undefined variable."),
+						}
+					} else {
+						return Err("Encountered variable without Some ExpressionVariables.");
 					}
 				},
 				_ => {},

@@ -1,3 +1,5 @@
+use core::convert::TryFrom;
+
 /// This enum contains all the operators that can be used in the RPN calc.
 /// 
 /// When I say "Operator", I mean things like + and -. Functions like sin() go in function.rs.
@@ -9,6 +11,19 @@ pub enum Operator {
 	Pow, Rot,
 	Unp, Unm,
 }
+impl TryFrom<&str> for Operator {
+	type Error = &'static str;
+	
+	fn try_from(s: &str) -> Result<Self, Self::Error> {
+		match s {
+			"+" => Ok(Operator::Add), "-" => Ok(Operator::Sub),
+			"*" => Ok(Operator::Mul), "/" => Ok(Operator::Div),
+			"%" => Ok(Operator::Mod),
+			"^" => Ok(Operator::Pow), "√" => Ok(Operator::Rot),
+			_ => Err("Could not parse operator. Unknown operator?"),
+		}
+	}
+}
 
 /// This enum contains all the functions that can be used in the RPN calc.
 /// 
@@ -19,6 +34,21 @@ pub enum Function {
 	Csc, Sec, Cot,
 	Log, Ln,
 	Abs, Sgn,
+	Pi, E,
+}
+impl TryFrom<&str> for Function {
+	type Error = &'static str;
+	
+	fn try_from(s: &str) -> Result<Self, Self::Error> {
+		match s {
+			"sin" => Ok(Function::Sin), "cos" => Ok(Function::Cos), "tan" => Ok(Function::Tan),
+			"csc" => Ok(Function::Csc), "sec" => Ok(Function::Sec), "cot" => Ok(Function::Cot),
+			"log" => Ok(Function::Log), "ln"  => Ok(Function::Ln),
+			"abs" => Ok(Function::Abs), "sgn" => Ok(Function::Sgn),
+			"Pi"  => Ok(Function::Pi),  "E"   => Ok(Function::E),
+			_ => Err("Could not parse function. Unknown function?"),
+		}
+	}
 }
 
 /// Simple Operator Associativity enum.
@@ -33,7 +63,6 @@ impl Operator {
 	/// Gets the amount of parameters an operator requires.
 	pub fn get_parameters(&self) -> usize {
 		match self {
-			// there are exceptions to this, but for now just this.
 			Operator::Add | Operator::Sub |
 			Operator::Mul | Operator::Div | Operator::Mod |
 			Operator::Pow | Operator::Rot => 2,
@@ -50,7 +79,7 @@ impl Operator {
 			Operator::Mul | Operator::Div | Operator::Mod => 3,
 			Operator::Pow | Operator::Rot => 5,
 			// Unary operators should have the highest precedence.
-			Operator::Unm | Operator::Unp => 7,
+			_ => 7,
 		}
 	}
 	
@@ -88,6 +117,7 @@ impl Function {
 	/// Sometimes functions will have parameters separated by commas, so we need a system in place for that.
 	pub fn get_parameters(&self) -> usize {
 		match self {
+			Function::Pi | Function::E => 0,
 			_ => 1,
 		}
 	}
@@ -108,9 +138,13 @@ impl Function {
 			Function::Csc => Ok(args[0].sin().recip()),
 			Function::Sec => Ok(args[0].cos().recip()),
 			Function::Cot => Ok(args[0].tan().recip()),
+			Function::Log => Ok(args[0].log10()),
+			Function::Ln  => Ok(args[0].log(core::f64::consts::E)),
 			Function::Abs => Ok(args[0].abs()),
 			Function::Sgn => Ok(args[0].signum()),
-			_ => Err("Unknown function."),
+			Function::Pi  => Ok(core::f64::consts::PI),
+			Function::E   => Ok(core::f64::consts::E),
+			// _ => Err("Unknown function."),
 		}
 	}
 }
