@@ -33,24 +33,15 @@ impl TryFrom<&str> for ParenthesisDirection {
 
 impl Token {
 	pub fn is_value(&self) -> bool {
-		match self {
-			Token::Constant(_) | Token::Variable(_) => true,
-			_ => false,
-		}
+		matches!(self, Token::Constant(_) | Token::Variable(_))
 	}
 	
 	pub fn is_operator(&self) -> bool {
-		match self {
-			Token::Operator(_) => true,
-			_ => false,
-		}
+		matches!(self, Token::Operator(_))
 	}
 	
 	pub fn is_function(&self) -> bool {
-		match self {
-			Token::Function(_) => true,
-			_ => false,
-		}
+		matches!(self, Token::Function(_))
 	}
 }
 
@@ -97,9 +88,7 @@ impl Expression {
 		
 		let tokens = Expression::process_implicit_tokens(&tokens);
 		
-		for i in 0..tokens.len() {
-			let token = tokens[i];
-			
+		for token in tokens.iter().cloned() {
 			// Shunting-yard algorithm match statement
 			match token {
 				Token::Constant(_) => result.push(token),
@@ -172,17 +161,13 @@ impl Expression {
 		
 		for i in 0..input.len() {
 			let token = input[i];
-			let prev_token: Option<Token>;
-			
-			if i > 0 {
-				prev_token = Some(input[i - 1]);
+			let prev_token = if i > 0 {
+				Some(input[i - 1])
 			} else {
-				prev_token = None;
-			}
+				None
+			};
 			
-			if prev_token.is_some() {
-				let prev_token = prev_token.unwrap();
-				
+			if let Some(prev_token) = prev_token {
 				// TODO: make this look less awkward. or maybe just split Pi and E off into a "constants" token type.
 				if (prev_token.is_value() || prev_token == Token::Parenthesis(ParenthesisDirection::Right) ||
 					(prev_token.is_function() && match prev_token { Token::Function(f) => f.get_parameters() < 1, _ => false, })

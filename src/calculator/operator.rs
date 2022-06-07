@@ -124,7 +124,7 @@ impl Function {
 	
 	/// Uh
 	pub fn get_precedence(&self) -> usize {
-		return 4;
+		4
 	}
 	
 	/// Calculates the result of using this function on a stack.

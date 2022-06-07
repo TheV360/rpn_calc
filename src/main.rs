@@ -1,5 +1,8 @@
 #![allow(dead_code)]
 
+// petty
+#![allow(clippy::tabs_in_doc_comments)]
+
 use std::io;
 
 mod util;
@@ -74,7 +77,7 @@ mod tests {
 			expression::Token::Constant(2.0),
 			expression::Token::Constant(4.0),
 			expression::Token::Operator(operator::Operator::Mul),
-		]).calculate().unwrap(), 8.0);
+		]).calculate(None).unwrap(), 8.0);
 	}
 	
 	#[test]
@@ -83,7 +86,7 @@ mod tests {
 			expression::Token::Constant(1.0),
 			expression::Token::Constant(2.0),
 			expression::Token::Operator(operator::Operator::Div),
-		]).calculate().unwrap(), 0.5);
+		]).calculate(None).unwrap(), 0.5);
 	}
 	
 	#[test]
@@ -92,7 +95,7 @@ mod tests {
 			expression::Token::Constant(1.0),
 			expression::Token::Operator(operator::Operator::Div),
 			expression::Token::Constant(2.0),
-		]).unwrap().calculate().unwrap(), 0.5);
+		]).unwrap().calculate(None).unwrap(), 0.5);
 		
 		let my_expression = expression::Expression::new_from_infix(vec![ // (2 + 5) * 6 ^ 2 = 252
 			expression::Token::Parenthesis(expression::ParenthesisDirection::Left),
@@ -118,8 +121,8 @@ mod tests {
 		]).unwrap();
 		my_other_expression.print();
 		
-		assert_eq!(my_expression.calculate().unwrap(), 252.0);
-		assert_eq!(my_other_expression.calculate().unwrap(), 182.0);
+		assert_eq!(my_expression.calculate(None).unwrap(), 252.0);
+		assert_eq!(my_other_expression.calculate(None).unwrap(), 182.0);
 	}
 	
 	#[test]
@@ -128,7 +131,7 @@ mod tests {
 			expression::Expression::infix_tokens_from_str("2.0+(2^5)/8").unwrap()
 		).unwrap();
 		
-		assert_eq!(my_expression.calculate().unwrap(), 6.0);
+		assert_eq!(my_expression.calculate(None).unwrap(), 6.0);
 	}
 	
 	#[test]
@@ -151,15 +154,16 @@ mod tests {
 	
 	#[test]
 	fn error_handling() {
-		assert!(!(expression::Expression::new_from_infix(vec![
+		assert!(expression::Expression::new_from_infix(vec![
 			expression::Token::Constant(1.0),
 			expression::Token::Operator(operator::Operator::Div),
 			expression::Token::Operator(operator::Operator::Div),
 			expression::Token::Constant(2.0),
-		]).unwrap().calculate()).is_ok());
+		]).unwrap().calculate(None).is_err());
 	}
 	
 	#[test]
 	fn basic_simplify() {
+		unimplemented!()
 	}
 }

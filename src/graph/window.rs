@@ -7,7 +7,7 @@ const SCALE: i32 = 4;
 
 pub fn start() {
 	// no logging pls
-	raylib::core::logging::set_trace_log(raylib::ffi::TraceLogType::LOG_NONE);
+	raylib::core::logging::set_trace_log(raylib::ffi::TraceLogLevel::LOG_NONE);
 	
 	let (mut rl, thread) = raylib::init()
 		.size(360 * SCALE, 240 * SCALE)
@@ -22,8 +22,8 @@ pub fn start() {
 	];
 	let mut active = 0;
 	let mut expressions_to_graph: Vec<expression::Expression> = Vec::new();
-	for i in 0..function_input_strings.len() {
-		expressions_to_graph.push(expression::Expression::new_from_infix(expression::Expression::infix_tokens_from_str(&function_input_strings[i]).unwrap()).unwrap());
+	for s in &function_input_strings {
+		expressions_to_graph.push(expression::Expression::new_from_infix(expression::Expression::infix_tokens_from_str(s).unwrap()).unwrap());
 	}
 	let mut graph3d = graph3d::Graph3D::new(graph3d::GraphArgs3D::Parametric(common::MinMax { min: -3.0, max: 3.0 }));
 	graph3d.position = graph3d::Point3D { x: -6.0, y: 0.0, z: 0.0 };
@@ -108,8 +108,8 @@ pub fn start() {
 			}
 			
 			if is_okay {
-				match graph3d.calculate_expression(&mut expressions_to_graph, 1024) {
-					Err(e) => angry_error = e.to_owned(), _ => {},
+				if let Err(e) = graph3d.calculate_expression(&expressions_to_graph, 1024) {
+					angry_error = e.to_owned();
 				}
 			}
 		}
@@ -124,14 +124,14 @@ pub fn start() {
 		d.clear_background(Color::BLACK);
 		
 		{
-			let mut d = d.begin_mode_3D(cam);
+			let mut d = d.begin_mode3D(cam);
 			
 			graph3d.draw(&mut d);
 			other_graph.draw(&mut d);
 		}
 		
-		for i in 0..function_input_strings.len() {
-			d.draw_text(&function_input_strings[i], if i == active { 20 } else { 12 }, 16 + 40 * (i as i32), 40, Color::PINK);
+		for (i, s) in function_input_strings.iter().enumerate() {
+			d.draw_text(s, if i == active { 20 } else { 12 }, 16 + 40 * (i as i32), 40, Color::PINK);
 		}
 		d.draw_text(">", 10, 26 + 40 * (active as i32), 20, Color::PINK);
 		

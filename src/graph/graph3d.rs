@@ -131,14 +131,14 @@ impl Graph3D {
 		let axis = self.graph_to_screen_point3d(&Point3D { x: 0.0, y: 0.0, z: 0.0 });
 		
 		fn grey(n: f64) -> Color {
-			return Color::new(255, 255, 255, (n * 255.) as u8);
+			Color::new(255, 255, 255, (n * 255.) as u8)
 		}
 		
 		match self.args {
 			GraphArgs3D::Cartesian => {
 				for i in 1..self.data.len() {
 					if i % self.tmp_data_width == 0 { continue; }
-					d.draw_line_3d(
+					d.draw_line_3D(
 						Vector3::from(self.graph_to_screen_point3d(&self.data[i - 1])),
 						Vector3::from(self.graph_to_screen_point3d(&self.data[i    ])),
 						Color::WHITE
@@ -146,7 +146,7 @@ impl Graph3D {
 				}
 				
 				for i in self.tmp_data_width..self.data.len() {
-					d.draw_line_3d(
+					d.draw_line_3D(
 						Vector3::from(self.graph_to_screen_point3d(&self.data[i - self.tmp_data_width])),
 						Vector3::from(self.graph_to_screen_point3d(&self.data[i                      ])),
 						Color::WHITE
@@ -155,7 +155,7 @@ impl Graph3D {
 			},
 			GraphArgs3D::Parametric(_) => {
 				for i in 1..self.data.len() {
-					d.draw_line_3d(
+					d.draw_line_3D(
 						Vector3::from(self.graph_to_screen_point3d(&self.data[i - 1])),
 						Vector3::from(self.graph_to_screen_point3d(&self.data[i    ])),
 						grey(1.0 - (((i as f64) / (self.data.len() as f64) + d.get_time() / 10.0) % 1.0) * 0.8)
